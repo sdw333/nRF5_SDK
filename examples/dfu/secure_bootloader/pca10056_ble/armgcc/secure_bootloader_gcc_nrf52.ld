@@ -7,14 +7,20 @@ MEMORY
 {
   FLASH (rx) : ORIGIN = 0xf8000, LENGTH = 0x6000
   RAM (rwx) :  ORIGIN = 0x200057b8, LENGTH = 0x3a848
+  mbr_params_page (r) : ORIGIN = 0x000FE000, LENGTH = 0x1000
   bootloader_settings_page (r) : ORIGIN = 0x000FF000, LENGTH = 0x1000
   uicr_mbr_params_page (r) : ORIGIN = 0x10001018, LENGTH = 0x4
-  mbr_params_page (r) : ORIGIN = 0x000FE000, LENGTH = 0x1000
   uicr_bootloader_start_address (r) : ORIGIN = 0x10001014, LENGTH = 0x4
 }
 
 SECTIONS
 {
+  .mbr_params_page(NOLOAD) :
+  {
+    PROVIDE(__start_mbr_params_page = .);
+    KEEP(*(SORT(.mbr_params_page*)))
+    PROVIDE(__stop_mbr_params_page = .);
+  } > mbr_params_page
   .bootloader_settings_page(NOLOAD) :
   {
     PROVIDE(__start_bootloader_settings_page = .);
@@ -27,12 +33,6 @@ SECTIONS
     KEEP(*(SORT(.uicr_mbr_params_page*)))
     PROVIDE(__stop_uicr_mbr_params_page = .);
   } > uicr_mbr_params_page
-  .mbr_params_page(NOLOAD) :
-  {
-    PROVIDE(__start_mbr_params_page = .);
-    KEEP(*(SORT(.mbr_params_page*)))
-    PROVIDE(__stop_mbr_params_page = .);
-  } > mbr_params_page
   .uicr_bootloader_start_address :
   {
     PROVIDE(__start_uicr_bootloader_start_address = .);
@@ -121,12 +121,6 @@ SECTIONS
     KEEP(*(SORT(.log_backends*)))
     PROVIDE(__stop_log_backends = .);
   } > FLASH
-  .sdh_state_observers :
-  {
-    PROVIDE(__start_sdh_state_observers = .);
-    KEEP(*(SORT(.sdh_state_observers*)))
-    PROVIDE(__stop_sdh_state_observers = .);
-  } > FLASH
   .sdh_stack_observers :
   {
     PROVIDE(__start_sdh_stack_observers = .);
@@ -138,6 +132,12 @@ SECTIONS
     PROVIDE(__start_sdh_req_observers = .);
     KEEP(*(SORT(.sdh_req_observers*)))
     PROVIDE(__stop_sdh_req_observers = .);
+  } > FLASH
+  .sdh_state_observers :
+  {
+    PROVIDE(__start_sdh_state_observers = .);
+    KEEP(*(SORT(.sdh_state_observers*)))
+    PROVIDE(__stop_sdh_state_observers = .);
   } > FLASH
   .sdh_soc_observers :
   {

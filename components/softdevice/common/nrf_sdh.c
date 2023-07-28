@@ -178,28 +178,6 @@ static void softdevice_evt_irq_disable(void)
 }
 
 
-#ifndef S140
-static void swi_interrupt_priority_workaround(void)
-{
-    // The priority of SoftDevice SWI SD_EVT_IRQn and RADIO_NOTIFICATION_IRQn in
-    // S132 v5.0.0, S112 v5.0.0, S212 v5.0.0 and S332 v5.0.0 is set to 6.
-    // Change it to APP_IRQ_PRIORITY_LOWEST (7) so that they do not preempt peripherals' interrupts.
-
-#ifdef SOFTDEVICE_PRESENT
-    ret_code_t ret_code;
-    ret_code = sd_nvic_SetPriority(SD_EVT_IRQn, APP_IRQ_PRIORITY_LOWEST);
-    APP_ERROR_CHECK(ret_code);
-    ret_code = sd_nvic_SetPriority(RADIO_NOTIFICATION_IRQn, APP_IRQ_PRIORITY_LOWEST);
-    APP_ERROR_CHECK(ret_code);
-#else
-    // In case of serialization, NVIC must be accessed directly.
-    NVIC_SetPriority(SD_EVT_IRQn, APP_IRQ_PRIORITY_LOWEST);
-    NVIC_SetPriority(RADIO_NOTIFICATION_IRQn, APP_IRQ_PRIORITY_LOWEST);
-#endif
-}
-#endif
-
-
 ret_code_t nrf_sdh_enable_request(void)
 {
     ret_code_t ret_code;
@@ -245,12 +223,6 @@ ret_code_t nrf_sdh_enable_request(void)
 
     m_nrf_sdh_continue  = false;
     m_nrf_sdh_suspended = false;
-
-#ifndef S140
-    // Set the interrupt priority after enabling the SoftDevice, since
-    // sd_softdevice_enable() sets the SoftDevice interrupt priority.
-    swi_interrupt_priority_workaround();
-#endif
 
     // Enable event interrupt.
     // Interrupt priority has already been set by the stack.

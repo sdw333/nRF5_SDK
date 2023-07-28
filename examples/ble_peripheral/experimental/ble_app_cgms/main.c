@@ -142,8 +142,6 @@ NRF_BLE_QWR_DEF(m_qwr);                                                         
 BLE_ADVERTISING_DEF(m_advertising);                                                 /**< Advertising module instance. */
 
 static uint16_t     m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
-static pm_peer_id_t m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];            /**< List of peers currently in the whitelist. */
-static uint32_t     m_whitelist_peer_cnt;                                           /**< Number of peers currently in the whitelist. */
 
 static ble_conn_state_user_flag_id_t m_bms_bonds_to_delete;                         /**< Flags used to identify bonds that should be deleted. */
 static bool                          delete_all_pending = false;                    /**< Flag to show that advertising should not be started after a single peer is deleted (@ref PM_EVT_PEER_DELETE_SUCCEEDED) because we are waiting for ALL peers to be deleted (@ref PM_EVT_PEERS_DELETE_SUCCEEDED). */
@@ -261,28 +259,41 @@ bool delete_bonds_pending(void)
 }
 
 
-/**@brief Fetch the list of peer manager peer IDs.
+/**@brief Function for setting filtered whitelist.
  *
- * @param[inout] p_peers   The buffer where to store the list of peer IDs.
- * @param[inout] p_size    In: The size of the @p p_peers buffer.
- *                         Out: The number of peers copied in the buffer.
+ * @param[in] skip  Filter passed to @ref pm_peer_id_list.
  */
-static void peer_list_get(pm_peer_id_t * p_peers, uint32_t * p_size)
+static void whitelist_set(pm_peer_id_list_skip_t skip)
 {
-    pm_peer_id_t peer_id;
-    uint32_t     peers_to_copy;
+    pm_peer_id_t peer_ids[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
+    uint32_t     peer_id_count = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
 
-    peers_to_copy = (*p_size < BLE_GAP_WHITELIST_ADDR_MAX_COUNT) ?
-                     *p_size : BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
+    ret_code_t err_code = pm_peer_id_list(peer_ids, &peer_id_count, PM_PEER_ID_INVALID, skip);
+    APP_ERROR_CHECK(err_code);
 
-    peer_id = pm_next_peer_id_get(PM_PEER_ID_INVALID);
-    *p_size = 0;
+    NRF_LOG_INFO("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d",
+                   peer_id_count,
+                   BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
 
-    while ((peer_id != PM_PEER_ID_INVALID) && (peers_to_copy--))
-    {
-        p_peers[(*p_size)++] = peer_id;
-        peer_id = pm_next_peer_id_get(peer_id);
-    }
+    err_code = pm_whitelist_set(peer_ids, peer_id_count);
+    APP_ERROR_CHECK(err_code);
+}
+
+
+/**@brief Function for setting filtered device identities.
+ *
+ * @param[in] skip  Filter passed to @ref pm_peer_id_list.
+ */
+static void identities_set(pm_peer_id_list_skip_t skip)
+{
+    pm_peer_id_t peer_ids[BLE_GAP_DEVICE_IDENTITIES_MAX_COUNT];
+    uint32_t     peer_id_count = BLE_GAP_DEVICE_IDENTITIES_MAX_COUNT;
+
+    ret_code_t err_code = pm_peer_id_list(peer_ids, &peer_id_count, PM_PEER_ID_INVALID, skip);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = pm_device_identities_list_set(peer_ids, peer_id_count);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -310,25 +321,9 @@ static void advertising_start(bool erase_bonds)
     }
     else
     {
-        ret_code_t ret;
+        whitelist_set(PM_PEER_ID_LIST_SKIP_NO_ID_ADDR);
 
-        memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
-        m_whitelist_peer_cnt = (sizeof(m_whitelist_peers) / sizeof(pm_peer_id_t));
-
-        peer_list_get(m_whitelist_peers, &m_whitelist_peer_cnt);
-
-        ret = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-        APP_ERROR_CHECK(ret);
-
-        // Setup the device identies list.
-        // Some SoftDevices do not support this feature.
-        ret = pm_device_identities_list_set(m_whitelist_peers, m_whitelist_peer_cnt);
-        if (ret != NRF_ERROR_NOT_SUPPORTED)
-        {
-            APP_ERROR_CHECK(ret);
-        }
-
-        ret = ble_advertising_start(&m_advertising, BLE_ADV_MODE_DIRECTED_HIGH_DUTY);
+        ret_code_t ret = ble_advertising_start(&m_advertising, BLE_ADV_MODE_DIRECTED_HIGH_DUTY);
         APP_ERROR_CHECK(ret);
     }
 }
@@ -875,12 +870,6 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             uint32_t addr_cnt = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
             uint32_t irk_cnt  = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
 
-            m_whitelist_peer_cnt = (sizeof(m_whitelist_peers) / sizeof(pm_peer_id_t));
-
-            // Fetch a list of peer IDs and whitelist them.
-            peer_list_get(m_whitelist_peers, &m_whitelist_peer_cnt);
-            err_code = pm_whitelist_set(m_whitelist_peers, m_whitelist_peer_cnt);
-            APP_ERROR_CHECK(err_code);
             err_code = pm_whitelist_get(whitelist_addrs, &addr_cnt,
                                         whitelist_irks,  &irk_cnt);
             APP_ERROR_CHECK(err_code);
@@ -888,6 +877,9 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             NRF_LOG_DEBUG("pm_whitelist_get returns %d addr in whitelist and %d irk whitelist",
                            addr_cnt,
                            irk_cnt);
+
+            // Set the correct identities list (no excluding peers with no Central Address Resolution).
+            identities_set(PM_PEER_ID_LIST_SKIP_NO_IRK);
 
             // Apply the whitelist.
             err_code = ble_advertising_whitelist_reply(&m_advertising,
@@ -913,6 +905,9 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
                 if (err_code != NRF_ERROR_NOT_FOUND)
                 {
                     APP_ERROR_CHECK(err_code);
+
+                    // Manipulate identities to exclude peers with no Central Address Resolution.
+                    identities_set(PM_PEER_ID_LIST_SKIP_ALL);
 
                     ble_gap_addr_t * p_peer_addr = &(peer_bonding_data.peer_ble_id.id_addr_info);
                     err_code = ble_advertising_peer_addr_reply(&m_advertising, p_peer_addr);
@@ -953,7 +948,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected");
-            m_conn_handle = BLE_CONN_HANDLE_INVALID;
             if (delete_bonds_pending())
             {
                 // Advertising is started by PM_EVT_PEERS_DELETE_SUCCEEDED or PM_EVT_PEERS_DELETE_SUCCEEDED event.
@@ -963,6 +957,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             {
                 advertising_start(false);
             }
+            m_conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -1107,6 +1102,17 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
             advertising_start(false);
             break;
 
+        case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
+            if (     p_evt->params.peer_data_update_succeeded.flash_changed
+                 && (p_evt->params.peer_data_update_succeeded.data_id == PM_PEER_DATA_ID_BONDING))
+            {
+                NRF_LOG_INFO("New Bond, add the peer to the whitelist if possible");
+                // Note: You should check on what kind of white list policy your application should use.
+
+                whitelist_set(PM_PEER_ID_LIST_SKIP_NO_ID_ADDR);
+            }
+            break;
+
         default:
             break;
     }
@@ -1166,7 +1172,7 @@ static void advertising_init(void)
 
     init.config.ble_adv_on_disconnect_disabled     = true;
     init.config.ble_adv_whitelist_enabled          = true;
-    init.config.ble_adv_directed_high_duty_enabled = false;
+    init.config.ble_adv_directed_high_duty_enabled = true;
     init.config.ble_adv_directed_enabled           = false;
     init.config.ble_adv_directed_interval          = 0;
     init.config.ble_adv_directed_timeout           = 0;

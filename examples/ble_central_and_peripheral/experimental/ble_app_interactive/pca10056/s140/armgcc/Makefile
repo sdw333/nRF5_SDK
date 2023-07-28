@@ -18,18 +18,12 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c \
   $(SDK_ROOT)/components/libraries/timer/app_timer.c \
   $(SDK_ROOT)/components/libraries/util/app_util_platform.c \
-  $(SDK_ROOT)/external/cifra_AES128-EAX/blockwise.c \
-  $(SDK_ROOT)/external/cifra_AES128-EAX/cifra_cmac.c \
-  $(SDK_ROOT)/external/cifra_AES128-EAX/cifra_eax_aes.c \
   $(SDK_ROOT)/components/libraries/crc16/crc16.c \
-  $(SDK_ROOT)/external/cifra_AES128-EAX/eax.c \
   $(SDK_ROOT)/components/libraries/fds/fds.c \
   $(SDK_ROOT)/external/fnmatch/fnmatch.c \
-  $(SDK_ROOT)/external/cifra_AES128-EAX/gf128.c \
   $(SDK_ROOT)/components/libraries/hardfault/nrf52/handler/hardfault_handler_gcc.c \
   $(SDK_ROOT)/components/libraries/hardfault/hardfault_implementation.c \
   $(SDK_ROOT)/components/libraries/mem_manager/mem_manager.c \
-  $(SDK_ROOT)/external/cifra_AES128-EAX/modes.c \
   $(SDK_ROOT)/components/libraries/util/nrf_assert.c \
   $(SDK_ROOT)/components/libraries/atomic_fifo/nrf_atfifo.c \
   $(SDK_ROOT)/components/libraries/atomic_flags/nrf_atflags.c \
@@ -64,7 +58,6 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_twim.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uart.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uarte.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/cifra/cifra_backend_aes_aead.c \
   $(PROJ_DIR)/ble_m.c \
   $(PROJ_DIR)/cli_m.c \
   $(PROJ_DIR)/main.c \
@@ -103,80 +96,8 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/crypto/backend/oberon/oberon_backend_hash.c \
   $(SDK_ROOT)/components/libraries/crypto/backend/oberon/oberon_backend_hmac.c \
   $(SDK_ROOT)/external/nfc_adafruit_library/adafruit_pn532.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_aes.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_aes_aead.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_ecc.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_ecdh.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_ecdsa.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_hash.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_hmac.c \
-  $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls/mbedtls_backend_init.c \
   $(SDK_ROOT)/external/mbedtls/library/aes.c \
-  $(SDK_ROOT)/external/mbedtls/library/aesni.c \
-  $(SDK_ROOT)/external/mbedtls/library/arc4.c \
-  $(SDK_ROOT)/external/mbedtls/library/asn1parse.c \
-  $(SDK_ROOT)/external/nrf_tls/mbedtls/replacements/asn1write.c \
-  $(SDK_ROOT)/external/mbedtls/library/base64.c \
-  $(SDK_ROOT)/external/mbedtls/library/bignum.c \
-  $(SDK_ROOT)/external/mbedtls/library/blowfish.c \
-  $(SDK_ROOT)/external/mbedtls/library/camellia.c \
-  $(SDK_ROOT)/external/mbedtls/library/ccm.c \
-  $(SDK_ROOT)/external/mbedtls/library/certs.c \
-  $(SDK_ROOT)/external/mbedtls/library/cipher.c \
-  $(SDK_ROOT)/external/mbedtls/library/cipher_wrap.c \
-  $(SDK_ROOT)/external/mbedtls/library/cmac.c \
   $(SDK_ROOT)/external/mbedtls/library/ctr_drbg.c \
-  $(SDK_ROOT)/external/mbedtls/library/debug.c \
-  $(SDK_ROOT)/external/mbedtls/library/des.c \
-  $(SDK_ROOT)/external/mbedtls/library/dhm.c \
-  $(SDK_ROOT)/external/mbedtls/library/ecdh.c \
-  $(SDK_ROOT)/external/mbedtls/library/ecdsa.c \
-  $(SDK_ROOT)/external/mbedtls/library/ecp.c \
-  $(SDK_ROOT)/external/mbedtls/library/ecp_curves.c \
-  $(SDK_ROOT)/external/mbedtls/library/entropy.c \
-  $(SDK_ROOT)/external/mbedtls/library/entropy_poll.c \
-  $(SDK_ROOT)/external/mbedtls/library/error.c \
-  $(SDK_ROOT)/external/mbedtls/library/gcm.c \
-  $(SDK_ROOT)/external/mbedtls/library/havege.c \
-  $(SDK_ROOT)/external/mbedtls/library/hmac_drbg.c \
-  $(SDK_ROOT)/external/mbedtls/library/md.c \
-  $(SDK_ROOT)/external/mbedtls/library/md2.c \
-  $(SDK_ROOT)/external/mbedtls/library/md4.c \
-  $(SDK_ROOT)/external/mbedtls/library/md5.c \
-  $(SDK_ROOT)/external/mbedtls/library/md_wrap.c \
-  $(SDK_ROOT)/external/mbedtls/library/memory_buffer_alloc.c \
-  $(SDK_ROOT)/external/mbedtls/library/oid.c \
-  $(SDK_ROOT)/external/mbedtls/library/padlock.c \
-  $(SDK_ROOT)/external/mbedtls/library/pem.c \
-  $(SDK_ROOT)/external/mbedtls/library/pk.c \
-  $(SDK_ROOT)/external/mbedtls/library/pk_wrap.c \
-  $(SDK_ROOT)/external/mbedtls/library/pkcs11.c \
-  $(SDK_ROOT)/external/mbedtls/library/pkcs12.c \
-  $(SDK_ROOT)/external/mbedtls/library/pkcs5.c \
-  $(SDK_ROOT)/external/mbedtls/library/pkparse.c \
-  $(SDK_ROOT)/external/mbedtls/library/pkwrite.c \
-  $(SDK_ROOT)/external/mbedtls/library/platform.c \
-  $(SDK_ROOT)/external/mbedtls/library/ripemd160.c \
-  $(SDK_ROOT)/external/mbedtls/library/rsa.c \
-  $(SDK_ROOT)/external/mbedtls/library/sha1.c \
-  $(SDK_ROOT)/external/mbedtls/library/sha256.c \
-  $(SDK_ROOT)/external/mbedtls/library/sha512.c \
-  $(SDK_ROOT)/external/mbedtls/library/ssl_cache.c \
-  $(SDK_ROOT)/external/mbedtls/library/ssl_ciphersuites.c \
-  $(SDK_ROOT)/external/mbedtls/library/ssl_cli.c \
-  $(SDK_ROOT)/external/mbedtls/library/ssl_cookie.c \
-  $(SDK_ROOT)/external/nrf_tls/mbedtls/replacements/ssl_srv.c \
-  $(SDK_ROOT)/external/mbedtls/library/ssl_ticket.c \
-  $(SDK_ROOT)/external/mbedtls/library/ssl_tls.c \
-  $(SDK_ROOT)/external/mbedtls/library/threading.c \
-  $(SDK_ROOT)/external/mbedtls/library/version.c \
-  $(SDK_ROOT)/external/mbedtls/library/version_features.c \
-  $(SDK_ROOT)/external/mbedtls/library/x509.c \
-  $(SDK_ROOT)/external/mbedtls/library/x509_create.c \
-  $(SDK_ROOT)/external/mbedtls/library/x509_crl.c \
-  $(SDK_ROOT)/external/mbedtls/library/x509_crt.c \
-  $(SDK_ROOT)/external/mbedtls/library/x509_csr.c \
-  $(SDK_ROOT)/external/mbedtls/library/xtea.c \
   $(SDK_ROOT)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/ac_rec/nfc_ac_rec.c \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/ble_oob_advdata/nfc_ble_oob_advdata.c \
@@ -240,39 +161,24 @@ SRC_FILES += \
   $(SDK_ROOT)/components/ble/peer_manager/security_dispatcher.c \
   $(SDK_ROOT)/components/ble/peer_manager/security_manager.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52840.c \
-  $(SDK_ROOT)/external/utf_converter/utf.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/ble_pair_msg \
-  $(SDK_ROOT)/components/nfc/t4t_parser/tlv \
-  $(SDK_ROOT)/components/drivers_nrf/usbd \
-  $(SDK_ROOT)/components/libraries/gpiote \
-  $(SDK_ROOT)/components/ble/ble_services/ble_lbs_c \
+  $(SDK_ROOT)/components/libraries/crypto/backend/cc310 \
   $(SDK_ROOT)/integration/nrfx/legacy \
-  $(SDK_ROOT)/components/libraries/usbd \
-  $(SDK_ROOT)/components/ble/ble_services/ble_lbs \
-  $(SDK_ROOT)/components/ble/ble_services/ble_cts_c \
-  $(SDK_ROOT)/external/nrf_oberon \
   $(SDK_ROOT)/components/libraries/delay \
-  $(SDK_ROOT)/components/ble/ble_services/ble_hrs \
-  $(SDK_ROOT)/components/libraries/cli/uart \
+  $(SDK_ROOT)/external/nrf_oberon/include \
   $(SDK_ROOT)/components/libraries/crypto \
-  $(SDK_ROOT)/external/micro-ecc/micro-ecc \
   $(SDK_ROOT)/components/libraries/mem_manager \
   $(SDK_ROOT)/components/libraries/memobj \
-  $(SDK_ROOT)/components/ble/ble_services/ble_nus \
+  $(SDK_ROOT)/components \
   $(SDK_ROOT)/components/libraries/crypto/backend/nrf_sw \
   $(SDK_ROOT)/components/libraries/scheduler \
-  $(SDK_ROOT)/components/ble/ble_services/ble_tps \
-  $(SDK_ROOT)/external/utf_converter \
   $(SDK_ROOT)/components/ble/ble_services/ble_bas \
-  $(SDK_ROOT)/components/nfc/t4t_parser/cc_file \
   $(SDK_ROOT)/external/segger_rtt \
   $(SDK_ROOT)/components/nfc/t2t_lib \
-  $(SDK_ROOT)/components/ble/ble_services/ble_hrs_c \
-  $(SDK_ROOT)/components/nfc/t4t_parser/hl_detection_procedure \
-  $(SDK_ROOT)/components/libraries/led_softblink \
+  $(SDK_ROOT)/external/micro-ecc/micro-ecc \
   $(SDK_ROOT)/components/softdevice/s140/headers/nrf52 \
   $(SDK_ROOT)/components/libraries/bsp \
   $(SDK_ROOT)/components/libraries/mpu \
@@ -281,45 +187,27 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/boards \
   $(SDK_ROOT)/components/libraries/timer \
   $(SDK_ROOT)/components/libraries/atomic_flags \
-  $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm \
-  $(SDK_ROOT)/components/libraries/experimental_task_manager \
-  $(SDK_ROOT)/components/ble/ble_services/ble_gls \
   $(SDK_ROOT)/external/nfc_adafruit_library \
   $(SDK_ROOT)/components/libraries/crypto/backend/cifra \
-  $(SDK_ROOT)/components/nfc/ndef/launchapp \
   $(SDK_ROOT)/components/libraries/atomic_fifo \
-  $(SDK_ROOT)/components/nfc/ndef/text \
-  $(SDK_ROOT)/components/ble/ble_services/ble_bas_c \
   $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser/ble_oob_advdata_parser \
   $(SDK_ROOT)/external/nrf_cc310/include \
-  $(SDK_ROOT)/components/libraries/usbd/class/cdc \
   $(SDK_ROOT)/components/nfc/ndef/parser/message \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/common \
   $(SDK_ROOT)/components/toolchain/cmsis/include \
   $(SDK_ROOT)/components/libraries/balloc \
-  $(SDK_ROOT)/components/ble/ble_services/ble_rscs \
-  $(SDK_ROOT)/components/ble/ble_dtm \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ias \
+  $(SDK_ROOT)/external/nrf_oberon \
   $(SDK_ROOT)/components/libraries/stack_info \
-  $(SDK_ROOT)/components/libraries/twi_sensor \
   $(SDK_ROOT)/components/libraries/strerror \
   $(SDK_ROOT)/modules/nrfx/drivers/include \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ans_c \
-  $(SDK_ROOT)/components/libraries/pwm \
-  $(SDK_ROOT)/components/libraries/hci \
-  $(SDK_ROOT)/components/libraries/usbd/class/hid/mouse \
+  $(SDK_ROOT)/components/ble/nrf_ble_scan \
   $(SDK_ROOT)/components/nfc/t2t_lib/hal_t2t \
-  $(SDK_ROOT)/components/ble/ble_services/ble_hids \
-  $(SDK_ROOT)/external/nrf_oberon/include \
+  $(SDK_ROOT)/components/libraries/cli/uart \
   $(SDK_ROOT)/components/ble/nrf_ble_gatt \
   $(SDK_ROOT)/modules/nrfx/hal \
-  $(SDK_ROOT)/components/libraries/bootloader/ble_dfu \
+  $(SDK_ROOT)/external/fnmatch \
   $(SDK_ROOT)/components/libraries/crypto/backend/micro_ecc \
-  ../config \
   $(SDK_ROOT)/components/libraries/pwr_mgmt \
-  $(SDK_ROOT)/components/nfc/t4t_lib/hal_t4t \
-  $(SDK_ROOT)/components/nfc/ndef/connection_handover/ble_pair_lib \
-  $(SDK_ROOT)/components/libraries/csense \
   $(SDK_ROOT)/components/libraries/fds \
   $(SDK_ROOT)/components/ble/ble_advertising \
   $(SDK_ROOT)/components/libraries/cli \
@@ -328,80 +216,44 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/ble_oob_advdata \
   $(SDK_ROOT)/components/libraries/hardfault/nrf52 \
   $(SDK_ROOT)/components/ble/common \
-  $(SDK_ROOT)/external/fnmatch \
+  ../config \
   $(SDK_ROOT)/components/libraries/log \
-  $(SDK_ROOT)/components/ble/ble_services/ble_rscs_c \
-  $(SDK_ROOT)/components \
   $(SDK_ROOT)/components/nfc/ndef/generic/message \
-  $(SDK_ROOT)/components/nfc/t4t_lib \
-  $(SDK_ROOT)/components/libraries/usbd/class/msc \
-  $(SDK_ROOT)/components/libraries/slip \
   $(SDK_ROOT)/external/mbedtls/include \
   $(SDK_ROOT)/components/libraries/crypto/backend/cc310_bl \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/ep_oob_rec \
   $(SDK_ROOT)/components/ble/peer_manager \
   $(SDK_ROOT)/components/softdevice/common \
-  $(SDK_ROOT)/components/ble/ble_services/ble_dis \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ias_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_cscs \
   $(SDK_ROOT)/components/libraries/log/src \
-  $(SDK_ROOT)/components/libraries/usbd/class/hid \
   $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser/le_oob_rec_parser \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ancs_c \
-  $(SDK_ROOT)/components/libraries/ecc \
   $(SDK_ROOT)/components/libraries/crypto/backend/nrf_hw \
-  $(SDK_ROOT)/external/cifra_AES128-EAX \
   $(SDK_ROOT)/components/libraries/crc16 \
   $(SDK_ROOT)/components/libraries/stack_guard \
-  $(SDK_ROOT)/components/nfc/t4t_parser/apdu \
   $(SDK_ROOT)/components/libraries/button \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/le_oob_rec \
-  $(SDK_ROOT)/components/ble/nrf_ble_scan \
-  $(SDK_ROOT)/components/libraries/usbd/class/audio \
-  $(SDK_ROOT)/components/nfc/ndef/parser/record \
-  $(SDK_ROOT)/components/libraries/low_power_pwm \
-  $(SDK_ROOT)/components/libraries/twi_mngr \
-  $(SDK_ROOT)/components/ble/ble_services/ble_dfu \
-  $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser \
-  $(SDK_ROOT)/components/nfc/ndef/uri \
-  $(SDK_ROOT)/components/libraries/experimental_section_vars \
-  $(SDK_ROOT)/components/libraries/usbd/class/hid/kbd \
   $(SDK_ROOT)/components/libraries/util \
+  $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser \
+  $(SDK_ROOT)/components/libraries/experimental_section_vars \
+  $(SDK_ROOT)/components/nfc/ndef/parser/record \
   $(SDK_ROOT)/components/libraries/atomic \
-  $(SDK_ROOT)/components/libraries/gfx \
-  $(SDK_ROOT)/components/libraries/crypto/backend/cc310 \
   $(SDK_ROOT)/components/libraries/hardfault \
   $(SDK_ROOT)/components/libraries/cli/rtt \
-  $(SDK_ROOT)/components/libraries/csense_drv \
-  $(SDK_ROOT)/components/libraries/svc \
   $(SDK_ROOT)/modules/nrfx/mdk \
-  $(SDK_ROOT)/components/ble/ble_racp \
-  $(SDK_ROOT)/components/ble/ble_services/ble_hts \
   $(SDK_ROOT)/integration/nrfx \
-  $(SDK_ROOT)/components/ble/ble_services/ble_lls \
-  $(SDK_ROOT)/components/nfc/t2t_parser \
   $(SDK_ROOT)/components/libraries/ringbuf \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/ac_rec \
   $(SDK_ROOT)/modules/nrfx \
-  $(SDK_ROOT)/components/ble/nrf_ble_qwr \
-  $(SDK_ROOT)/components/libraries/sdcard \
-  $(SDK_ROOT)/components/libraries/sortlist \
+  $(SDK_ROOT)/components/nfc/t2t_parser \
   $(SDK_ROOT)/components/libraries/mutex \
   $(SDK_ROOT)/components/libraries/crypto/backend/mbedtls \
   $(SDK_ROOT)/components/libraries/queue \
-  $(SDK_ROOT)/components/ble/ble_services/ble_nus_c \
-  $(SDK_ROOT)/components/libraries/usbd/class/hid/generic \
-  $(SDK_ROOT)/components/libraries/crc32 \
   $(SDK_ROOT)/components/libraries/fstorage \
   $(SDK_ROOT)/components/nfc/ndef/generic/record \
-  $(SDK_ROOT)/components/libraries/spi_mngr \
   $(SDK_ROOT)/components/libraries/crypto/backend/oberon \
-  $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser/ac_rec_parser \
 
 # Libraries common to all targets
 LIB_FILES += \
   $(SDK_ROOT)/external/nrf_cc310/lib/libnrf_cc310_0.9.10.a \
-  $(SDK_ROOT)/external/micro-ecc/nrf52hf_armgcc/armgcc/micro_ecc_lib_nrf52.a \
   $(SDK_ROOT)/external/nrf_oberon/lib/nrf52/liboberon_2.0.5.a \
   $(SDK_ROOT)/components/nfc/t2t_lib/nfc_t2t_lib_gcc.a \
 

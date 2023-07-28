@@ -57,14 +57,12 @@ ret_code_t es_gatts_read_send_not_permitted(nrf_ble_escs_t * p_escs);
 ret_code_t es_gatts_read_handle_unlocked_read(nrf_ble_escs_t * p_escs,
                                               uint16_t         uuid,
                                               uint16_t         val_handle,
-                                              uint8_t          active_slot,
-                                              uint8_t          lock_state);
+                                              uint8_t          active_slot);
 
 ret_code_t es_gatts_read_handle_unlock(nrf_ble_escs_t * p_escs);
 
 ret_code_t es_gatts_read_handle_locked_read(nrf_ble_escs_t * p_escs,
-                                      uint16_t         uuid,
-                                      uint8_t          lock_state);
+                                      uint16_t         uuid);
 
 /**
  * @}

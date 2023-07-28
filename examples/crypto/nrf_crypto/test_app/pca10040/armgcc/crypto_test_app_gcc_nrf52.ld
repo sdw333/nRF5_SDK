@@ -45,12 +45,6 @@ SECTIONS
     KEEP(*(SORT(.crypto_data*)))
     PROVIDE(__stop_crypto_data = .);
   } > FLASH
-  .test_vector_aes_mac_data :
-  {
-    PROVIDE(__start_test_vector_aes_mac_data = .);
-    KEEP(*(SORT(.test_vector_aes_mac_data*)))
-    PROVIDE(__stop_test_vector_aes_mac_data = .);
-  } > FLASH
   .test_vector_aes_monte_carlo_data :
   {
     PROVIDE(__start_test_vector_aes_monte_carlo_data = .);
@@ -68,6 +62,12 @@ SECTIONS
     PROVIDE(__start_test_vector_aes_data = .);
     KEEP(*(SORT(.test_vector_aes_data*)))
     PROVIDE(__stop_test_vector_aes_data = .);
+  } > FLASH
+  .test_vector_aes_mac_data :
+  {
+    PROVIDE(__start_test_vector_aes_mac_data = .);
+    KEEP(*(SORT(.test_vector_aes_mac_data*)))
+    PROVIDE(__stop_test_vector_aes_mac_data = .);
   } > FLASH
   .test_vector_aead_data :
   {

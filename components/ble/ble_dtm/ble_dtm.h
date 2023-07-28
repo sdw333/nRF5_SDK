@@ -63,9 +63,9 @@ extern "C" {
 #define DEFAULT_TIMER                   NRF_TIMER0                          /**< Default timer used for timing. */
 #define DEFAULT_TIMER_IRQn              TIMER0_IRQn                         /**< IRQ used for timer. NOTE: MUST correspond to DEFAULT_TIMER. */
 
-#define ERRATA_172_TIMER                NRF_TIMER1                          /**< Timer used for the workaround for errata 172 on affected nRF5 devices. */
-#define ERRATA_172_TIMER_IRQn           TIMER1_IRQn                         /**< IRQ used for timer. NOTE: MUST correspond to ERRATA_172_TIMER. */
-#define ERRATA_172_TIMER_IRQHandler     TIMER1_IRQHandler                   /**< IRQHandler used for timer. NOTE: MUST correspond to ERRATA_172_TIMER. */
+#define ANOMALY_172_TIMER                NRF_TIMER1                          /**< Timer used for the workaround for errata 172 on affected nRF5 devices. */
+#define ANOMALY_172_TIMER_IRQn           TIMER1_IRQn                         /**< IRQ used for timer. NOTE: MUST correspond to ERRATA_172_TIMER. */
+#define ANOMALY_172_TIMER_IRQHandler     TIMER1_IRQHandler                   /**< IRQHandler used for timer. NOTE: MUST correspond to ERRATA_172_TIMER. */
     
 /**@brief BLE DTM command codes. */
 typedef uint32_t dtm_cmd_t;                                                 /**< DTM command type. */

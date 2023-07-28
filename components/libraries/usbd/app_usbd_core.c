@@ -679,12 +679,22 @@ static ret_code_t setup_device_req_get_descriptor(app_usbd_class_inst_t const * 
     {
         case APP_USBD_DESCRIPTOR_DEVICE:
         {
+            if(p_setup_ev->setup.wLength.w == 0)
+            {
+                return NRF_SUCCESS;
+            }
+
             return app_usbd_core_setup_rsp(&(p_setup_ev->setup),
                                            &m_device_dsc,
                                            sizeof(m_device_dsc));
         }
         case APP_USBD_DESCRIPTOR_CONFIGURATION:
         {
+            if(p_setup_ev->setup.wLength.w == 0)
+            {
+                return NRF_SUCCESS;
+            }
+
             /* The size equals the size of configuration descriptor and all classes descriptors */
             const size_t size = MIN(
                 sizeof(app_usbd_descriptor_configuration_t),
@@ -756,6 +766,11 @@ static ret_code_t setup_device_req_get_descriptor(app_usbd_class_inst_t const * 
         }
         case APP_USBD_DESCRIPTOR_STRING:
         {
+            if(p_setup_ev->setup.wLength.w == 0)
+            {
+                return NRF_SUCCESS;
+            }
+
             app_usbd_string_desc_idx_t id =
                     (app_usbd_string_desc_idx_t)(p_setup_ev->setup.wValue.lb);
             uint16_t langid = p_setup_ev->setup.wIndex.w;

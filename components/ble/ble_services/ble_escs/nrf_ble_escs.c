@@ -617,7 +617,7 @@ ret_code_t nrf_ble_escs_init(nrf_ble_escs_t * p_escs, const nrf_ble_escs_init_t 
     VERIFY_SUCCESS(err_code);
 
     err_code = char_add(&LOCK_STATE_CHAR_INIT, p_escs,
-                        p_escs->p_lock_state, &p_escs->lock_state_handles);
+                        &p_escs->lock_state, &p_escs->lock_state_handles);
     VERIFY_SUCCESS(err_code);
 
     err_code = char_add(&UNLOCK_CHAR_INIT, p_escs,

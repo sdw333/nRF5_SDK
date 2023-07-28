@@ -146,7 +146,7 @@ static void check_and_update_mac_address(bool demand_new_mac)
  */
 static void lock_beacon(void)
 {
-    *(m_ble_ecs.p_lock_state) = NRF_BLE_ESCS_LOCK_STATE_LOCKED;
+    m_ble_ecs.lock_state = NRF_BLE_ESCS_LOCK_STATE_LOCKED;
 }
 
 
@@ -188,7 +188,7 @@ static void on_ble_evt(ble_evt_t const * p_ble_evt)
             err_code = es_flash_access_beacon_config(&beacon_config, ES_FLASH_ACCESS_WRITE);
             APP_ERROR_CHECK(err_code);
 
-            if (*m_ble_ecs.p_lock_state == NRF_BLE_ESCS_LOCK_STATE_UNLOCKED)
+            if (m_ble_ecs.lock_state == NRF_BLE_ESCS_LOCK_STATE_UNLOCKED)
             {
                 lock_beacon();
             }
@@ -223,7 +223,7 @@ static void nrf_ble_escs_security_cb(uint8_t slot_no, es_security_msg_t msg_type
     switch (msg_type)
     {
         case ES_SECURITY_MSG_UNLOCKED:
-            *(m_ble_ecs.p_lock_state) = NRF_BLE_ESCS_LOCK_STATE_UNLOCKED;
+            m_ble_ecs.lock_state = NRF_BLE_ESCS_LOCK_STATE_UNLOCKED;
             break;
 
         case ES_SECURITY_MSG_EID:

@@ -121,12 +121,6 @@ SECTIONS
     KEEP(*(SORT(.log_backends*)))
     PROVIDE(__stop_log_backends = .);
   } > FLASH
-  .sdh_state_observers :
-  {
-    PROVIDE(__start_sdh_state_observers = .);
-    KEEP(*(SORT(.sdh_state_observers*)))
-    PROVIDE(__stop_sdh_state_observers = .);
-  } > FLASH
   .sdh_stack_observers :
   {
     PROVIDE(__start_sdh_stack_observers = .);
@@ -138,6 +132,12 @@ SECTIONS
     PROVIDE(__start_sdh_req_observers = .);
     KEEP(*(SORT(.sdh_req_observers*)))
     PROVIDE(__stop_sdh_req_observers = .);
+  } > FLASH
+  .sdh_state_observers :
+  {
+    PROVIDE(__start_sdh_state_observers = .);
+    KEEP(*(SORT(.sdh_state_observers*)))
+    PROVIDE(__stop_sdh_state_observers = .);
   } > FLASH
   .sdh_soc_observers :
   {

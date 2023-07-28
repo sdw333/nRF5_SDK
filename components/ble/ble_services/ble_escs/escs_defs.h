@@ -59,6 +59,8 @@
 #define ESCS_EID_WRITE_ENC_ID_KEY_INDEX (1)
 #define ESCS_EID_WRITE_IDK_LENGTH       (18)
 
+#define ESCS_LOCK_STATE_READ_LENGTH     (1)
+
 #define ESCS_URL_MIN_WRITE_LENGTH       (4)
 #define ESCS_URL_WRITE_LENGTH           (19)
 

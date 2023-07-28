@@ -123,6 +123,7 @@ ret_code_t ecc_p256_public_key_compute(uint8_t const *p_le_sk, uint8_t *p_le_pk)
 
 ret_code_t ecc_p256_shared_secret_compute(uint8_t const *p_le_sk, uint8_t const *p_le_pk, uint8_t *p_le_ss)
 {
+    int ret;
     const struct uECC_Curve_t * p_curve;
 
     if (!p_le_sk || !p_le_pk || !p_le_ss)
@@ -136,9 +137,17 @@ ret_code_t ecc_p256_shared_secret_compute(uint8_t const *p_le_sk, uint8_t const 
     }
 
     p_curve = uECC_secp256r1();
-
+    
+    
+    // Validate the remote public key
+    ret = uECC_valid_public_key((uint8_t*) p_le_pk, p_curve);
+    if (!ret)
+    {
+        return NRF_ERROR_INTERNAL;
+    }
+    
     //NRF_LOG_INFO("uECC_shared_secret");
-    int ret = uECC_shared_secret((uint8_t *) p_le_pk, (uint8_t *) p_le_sk, p_le_ss, p_curve);
+    ret = uECC_shared_secret((uint8_t *) p_le_pk, (uint8_t *) p_le_sk, p_le_ss, p_curve);
     if (!ret)
     {
         return NRF_ERROR_INTERNAL;

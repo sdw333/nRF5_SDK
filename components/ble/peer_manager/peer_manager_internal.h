@@ -74,6 +74,7 @@ typedef struct
     {
         pm_peer_data_bonding_t       * p_bonding_data;            /**< @brief The exchanged bond information in addition to metadata of the bonding. */
         uint32_t                     * p_peer_rank;               /**< @brief A value locally assigned to this peer. Its interpretation is up to the user. The rank is not set automatically by the Peer Manager, but it is assigned by the user using either @ref pm_peer_rank_highest or a @ref PM_PEER_DATA_FUNCTIONS function. */
+        uint32_t                     * p_central_addr_res;        /**< @brief Value of peer's Central Address Resolution characteristic. */
         bool                         * p_service_changed_pending; /**< @brief Whether a service changed indication should be sent to the peer. */
         pm_peer_data_local_gatt_db_t * p_local_gatt_db;           /**< @brief Persistent information pertaining to a peer GATT client. */
         ble_gatt_db_srv_t            * p_remote_gatt_db;          /**< @brief Persistent information pertaining to a peer GATT server. */
@@ -95,6 +96,7 @@ typedef struct
     {
         pm_peer_data_bonding_t       const * p_bonding_data;            /**< @brief Immutable @ref pm_peer_data_t::p_bonding_data. */
         uint32_t                     const * p_peer_rank;               /**< @brief Immutable @ref pm_peer_data_t::p_peer_rank. */
+        uint32_t                     const * p_central_addr_res;        /**< @brief Immutable @ref pm_peer_data_t::p_central_addr_res. */
         bool                         const * p_service_changed_pending; /**< @brief Immutable @ref pm_peer_data_t::p_service_changed_pending. */
         pm_peer_data_local_gatt_db_t const * p_local_gatt_db;           /**< @brief Immutable @ref pm_peer_data_t::p_local_gatt_db. */
         ble_gatt_db_srv_t            const * p_remote_gatt_db;          /**< @brief Immutable @ref pm_peer_data_t::p_remote_gatt_db. */

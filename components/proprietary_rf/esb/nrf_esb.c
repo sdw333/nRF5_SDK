@@ -176,10 +176,6 @@ static volatile uint32_t            m_retransmits_remaining;
 static volatile uint32_t            m_last_tx_attempts;
 static volatile uint32_t            m_wait_for_ack_timeout_us;
 
-#ifdef NRF52832_XXAA
-// nRF52832 Rev 1 address workaround enable
-static bool                         m_address_hang_fix_enable = true;
-#endif
 static volatile uint32_t            m_radio_shorts_common = _RADIO_SHORTS_COMMON;
 
 // These function pointers are changed dynamically, depending on protocol configuration and state.
@@ -997,39 +993,6 @@ uint32_t nrf_esb_init(nrf_esb_config_t const * p_config)
     NVIC_SetPriority(RADIO_IRQn, m_config_local.radio_irq_priority & ESB_IRQ_PRIORITY_MSK);
     NVIC_SetPriority(ESB_EVT_IRQ, m_config_local.event_irq_priority & ESB_IRQ_PRIORITY_MSK);
     NVIC_EnableIRQ(ESB_EVT_IRQ);
-
-#ifdef NRF52832_XXAA
-    if ((NRF_FICR->INFO.VARIANT & 0x0000FF00) == 0x00004200) //Check if the device is an nRF52832 Rev. 1.
-    {
-        if (m_address_hang_fix_enable)
-        {
-            // Setup a timeout timer to start on an ADDRESS match, and stop on a BCMATCH event.
-            // If the BCMATCH event never occurs the CC[0] event will fire, and the timer interrupt will disable the radio to recover.
-            m_radio_shorts_common |= RADIO_SHORTS_ADDRESS_BCSTART_Msk;
-            NRF_RADIO->BCC = 2;
-            NRF_ESB_BUGFIX_TIMER->BITMODE = TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos;
-            NRF_ESB_BUGFIX_TIMER->PRESCALER = 4;
-            NRF_ESB_BUGFIX_TIMER->CC[0] = 5;
-            NRF_ESB_BUGFIX_TIMER->SHORTS = TIMER_SHORTS_COMPARE0_STOP_Msk | TIMER_SHORTS_COMPARE0_CLEAR_Msk;
-            NRF_ESB_BUGFIX_TIMER->MODE = TIMER_MODE_MODE_Timer << TIMER_MODE_MODE_Pos;
-            NRF_ESB_BUGFIX_TIMER->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
-            NRF_ESB_BUGFIX_TIMER->TASKS_CLEAR = 1;
-            NVIC_SetPriority(NRF_ESB_BUGFIX_TIMER_IRQn, 5);
-            NVIC_EnableIRQ(NRF_ESB_BUGFIX_TIMER_IRQn);
-
-            NRF_PPI->CH[NRF_ESB_PPI_BUGFIX1].EEP = (uint32_t)&NRF_RADIO->EVENTS_ADDRESS;
-            NRF_PPI->CH[NRF_ESB_PPI_BUGFIX1].TEP = (uint32_t)&NRF_ESB_BUGFIX_TIMER->TASKS_START;
-
-            NRF_PPI->CH[NRF_ESB_PPI_BUGFIX2].EEP = (uint32_t)&NRF_RADIO->EVENTS_BCMATCH;
-            NRF_PPI->CH[NRF_ESB_PPI_BUGFIX2].TEP = (uint32_t)&NRF_ESB_BUGFIX_TIMER->TASKS_SHUTDOWN;
-
-            NRF_PPI->CH[NRF_ESB_PPI_BUGFIX3].EEP = (uint32_t)&NRF_RADIO->EVENTS_BCMATCH;
-            NRF_PPI->CH[NRF_ESB_PPI_BUGFIX3].TEP = (uint32_t)&NRF_ESB_BUGFIX_TIMER->TASKS_CLEAR;
-
-            NRF_PPI->CHENSET = (1 << NRF_ESB_PPI_BUGFIX1) | (1 << NRF_ESB_PPI_BUGFIX2) | (1 << NRF_ESB_PPI_BUGFIX3);
-        }
-    }
-#endif
 
     m_nrf_esb_mainstate = NRF_ESB_STATE_IDLE;
     m_esb_initialized = true;

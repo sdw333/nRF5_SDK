@@ -153,6 +153,7 @@ static bool peer_data_id_is_valid(pm_peer_data_id_t data_id)
             (data_id == PM_PEER_DATA_ID_GATT_LOCAL)              ||
             (data_id == PM_PEER_DATA_ID_GATT_REMOTE)             ||
             (data_id == PM_PEER_DATA_ID_PEER_RANK)               ||
+            (data_id == PM_PEER_DATA_ID_CENTRAL_ADDR_RES)        ||
             (data_id == PM_PEER_DATA_ID_APPLICATION));
 }
 

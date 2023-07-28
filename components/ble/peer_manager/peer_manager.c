@@ -598,6 +598,155 @@ pm_peer_id_t pm_next_peer_id_get(pm_peer_id_t prev_peer_id)
 }
 
 
+/**@brief Function for checking if the peer has a valid Identity Resolving Key.
+ *
+ * @param[in] p_irk Pointer to the Identity Resolving Key.
+ */
+static bool peer_is_irk(ble_gap_irk_t const * const p_irk)
+{
+     for (uint32_t i = 0; i < ARRAY_SIZE(p_irk->irk); i++)
+     {
+        if (p_irk->irk[i] != 0)
+        {
+            return true;
+        }
+     }
+
+     return false;
+}
+
+
+ret_code_t pm_peer_id_list(pm_peer_id_t         * p_peer_list,
+                           uint32_t       * const p_list_size,
+                           pm_peer_id_t           first_peer_id,
+                           pm_peer_id_list_skip_t skip_id)
+{
+    VERIFY_MODULE_INITIALIZED();
+    VERIFY_PARAM_NOT_NULL(p_list_size);
+    VERIFY_PARAM_NOT_NULL(p_peer_list);
+
+    ret_code_t             err_code;
+    uint32_t               size            = *p_list_size;
+    uint32_t               current_size    = 0;
+    pm_peer_data_t         pm_car_data;
+    pm_peer_data_t         pm_bond_data;
+    pm_peer_id_t           current_peer_id = first_peer_id;
+    ble_gap_addr_t const * p_gap_addr;
+    bool                   skip_no_addr = skip_id & PM_PEER_ID_LIST_SKIP_NO_ID_ADDR;
+    bool                   skip_no_irk  = skip_id & PM_PEER_ID_LIST_SKIP_NO_IRK;
+    bool                   skip_no_car  = skip_id & PM_PEER_ID_LIST_SKIP_NO_CAR;
+
+    //lint -save -e685
+    if ((*p_list_size < 1) ||
+        (skip_id > (PM_PEER_ID_LIST_SKIP_NO_ID_ADDR | PM_PEER_ID_LIST_SKIP_ALL)))
+    {
+        return NRF_ERROR_INVALID_PARAM;
+    }
+    //lint -restore
+
+    *p_list_size = 0;
+
+    if (current_peer_id == PM_PEER_ID_INVALID)
+    {
+        current_peer_id = pm_next_peer_id_get(current_peer_id);
+
+        if (current_peer_id == PM_PEER_ID_INVALID)
+        {
+            return NRF_SUCCESS;
+        }
+    }
+
+    memset(&pm_car_data, 0, sizeof(pm_peer_data_t));
+    memset(&pm_bond_data, 0, sizeof(pm_peer_data_t));
+
+    while (current_peer_id != PM_PEER_ID_INVALID)
+    {
+        bool skip = false;
+
+        if (skip_no_addr || skip_no_irk)
+        {
+            // Get data
+            pm_bond_data.p_bonding_data = NULL;
+
+            err_code = pds_peer_data_read(current_peer_id,
+                                          PM_PEER_DATA_ID_BONDING,
+                                          &pm_bond_data,
+                                          NULL);
+
+            if (err_code == NRF_ERROR_NOT_FOUND)
+            {
+                skip = true;
+            }
+            else
+            {
+                VERIFY_SUCCESS(err_code);
+            }
+
+            // Check data
+            if (skip_no_addr)
+            {
+                p_gap_addr = &pm_bond_data.p_bonding_data->peer_ble_id.id_addr_info;
+
+                if ((p_gap_addr->addr_type != BLE_GAP_ADDR_TYPE_PUBLIC) &&
+                    (p_gap_addr->addr_type != BLE_GAP_ADDR_TYPE_RANDOM_STATIC))
+                {
+                    skip = true;
+                }
+            }
+            if (skip_no_irk)
+            {
+                if (!peer_is_irk(&pm_bond_data.p_bonding_data->peer_ble_id.id_info))
+                {
+                    skip = true;
+                }
+            }
+        }
+
+        if (skip_no_car)
+        {
+            // Get data
+            pm_car_data.p_central_addr_res = NULL;
+
+            err_code = pds_peer_data_read(current_peer_id,
+                                          PM_PEER_DATA_ID_CENTRAL_ADDR_RES,
+                                          &pm_car_data,
+                                          NULL);
+
+            if (err_code == NRF_ERROR_NOT_FOUND)
+            {
+                skip = true;
+            }
+            else
+            {
+                VERIFY_SUCCESS(err_code);
+            }
+
+            // Check data
+            if (*pm_car_data.p_central_addr_res == 0)
+            {
+                skip = true;
+            }
+        }
+
+        if (!skip)
+        {
+            p_peer_list[current_size++] = current_peer_id;
+
+            if (current_size >= size)
+            {
+                break;
+            }
+        }
+
+        current_peer_id = pm_next_peer_id_get(current_peer_id);
+    }
+
+    *p_list_size = current_size;
+
+    return NRF_SUCCESS;
+}
+
+
 ret_code_t pm_peer_data_load(pm_peer_id_t       peer_id,
                              pm_peer_data_id_t  data_id,
                              void             * p_data,

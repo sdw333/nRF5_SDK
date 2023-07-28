@@ -139,7 +139,7 @@ static ret_code_t read_adv_slot(nrf_ble_escs_t * p_escs, uint8_t active_slot, co
 }
 
 
-ret_code_t es_gatts_read_handle_locked_read(nrf_ble_escs_t * p_escs, uint16_t uuid, uint8_t lock_state)
+ret_code_t es_gatts_read_handle_locked_read(nrf_ble_escs_t * p_escs, uint16_t uuid)
 {
     VERIFY_PARAM_NOT_NULL(p_escs);
 
@@ -151,7 +151,7 @@ ret_code_t es_gatts_read_handle_locked_read(nrf_ble_escs_t * p_escs, uint16_t uu
 
     else if (uuid == BLE_UUID_ESCS_LOCK_STATE_CHAR)
     {
-        return read_value(p_escs, sizeof(lock_state), &lock_state);
+        return read_value(p_escs, ESCS_LOCK_STATE_READ_LENGTH, &p_escs->lock_state);
     }
 
     else
@@ -180,8 +180,7 @@ ret_code_t es_gatts_read_handle_unlock(nrf_ble_escs_t * p_escs)
 ret_code_t es_gatts_read_handle_unlocked_read(nrf_ble_escs_t * p_escs,
                                               uint16_t         uuid,
                                               uint16_t         val_handle,
-                                              uint8_t          active_slot,
-                                              uint8_t          lock_state)
+                                              uint8_t          active_slot)
 {
     VERIFY_PARAM_NOT_NULL(p_escs);
 
@@ -196,7 +195,7 @@ ret_code_t es_gatts_read_handle_unlocked_read(nrf_ble_escs_t * p_escs,
             return read_from_gattdb(p_escs, val_handle);
 
         case BLE_UUID_ESCS_LOCK_STATE_CHAR:
-            return read_value(p_escs, sizeof(lock_state), &lock_state);
+            return read_value(p_escs, ESCS_LOCK_STATE_READ_LENGTH, &p_escs->lock_state);
 
         case BLE_UUID_ESCS_ADV_INTERVAL_CHAR:
         {

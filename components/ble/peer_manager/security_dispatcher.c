@@ -810,16 +810,8 @@ ret_code_t smd_params_reply(uint16_t                 conn_handle,
         // NULL params means reject pairing.
         sec_status = BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP;
     }
-    else if (!p_sec_params->bond)
-    {
-        // Pairing, no bonding.
-
-        sec_keyset.keys_own.p_pk  = p_public_key;
-        sec_keyset.keys_peer.p_pk = &m_peer_pk;
-    }
     else
     {
-        // Bonding is to be performed, prepare to receive bonding data.
         if ((im_peer_id_get_by_conn_handle(conn_handle) != PM_PEER_ID_INVALID) &&
             (role == BLE_GAP_ROLE_PERIPH) &&
             !allow_repairing(conn_handle))
@@ -833,8 +825,15 @@ ret_code_t smd_params_reply(uint16_t                 conn_handle,
             }
         }
 
-        if (sec_status != BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP)
+        if (!p_sec_params->bond)
         {
+            // Pairing, no bonding.
+            sec_keyset.keys_own.p_pk  = p_public_key;
+            sec_keyset.keys_peer.p_pk = &m_peer_pk;
+        }
+        else if (sec_status != BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP)
+        {
+            // Bonding is to be performed, prepare to receive bonding data.
             err_code = sec_keyset_fill(conn_handle, role, p_public_key, &sec_keyset);
         }
     }

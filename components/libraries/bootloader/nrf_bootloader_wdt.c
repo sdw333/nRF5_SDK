@@ -46,8 +46,6 @@
 #include "nrf_log.h"
 NRF_LOG_MODULE_REGISTER();
 
-//Flag used to determine if internal feeding should stay active.
-static bool m_wdt_keep_internal_feed;
 
 static void wdt_feed(void)
 {
@@ -66,11 +64,8 @@ static void wdt_feed(void)
 
 static void wdt_feed_timer_handler(void)
 {
-    if (m_wdt_keep_internal_feed)
-    {
-        NRF_LOG_INFO("Internal feed");
-        wdt_feed();
-    }
+    NRF_LOG_INFO("Internal feed");
+    wdt_feed();
 }
 
 

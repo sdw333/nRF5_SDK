@@ -152,9 +152,9 @@ static uint32_t          m_crc_init          = 0x00555555;                   /**
 static uint8_t           m_radio_mode        = RADIO_MODE_MODE_Ble_1Mbit;    /**< nRF51 specific radio mode value. */
 static uint32_t          m_txIntervaluS      = 2500;                          /**< Time between start of Tx packets (in uS). */
 
-// nRF52840 errata 172
-static bool              errata_172_wa_enabled  = false;                         /**< Enable or disable the workaround for Errata 172. */
-static uint8_t           strict_mode            = 0;                             /**< Enable or disable strict mode to workaround Errata 172. */
+// nRF52840 anomaly 172
+static bool              anomaly_172_wa_enabled  = false;                         /**< Enable or disable the workaround for Errata 172. */
+static uint8_t           m_strict_mode          = 0;                             /**< Enable or disable strict mode to workaround Errata 172. */
 #define BLOCKER_FIX_RSSI_THRESHOLD              95
 #define BLOCKER_FIX_WAIT_DEFAULT                10000 // 10 ms
 #define BLOCKER_FIX_WAIT_END                    500 // 500 us
@@ -311,40 +311,39 @@ static uint32_t radio_init(void)
     return DTM_SUCCESS;
 }
 
-// Strict mode used only by devices affected by nRF52840 errata 172
-void set_strict_mode(uint8_t en)
-{
-    uint8_t dbcCorrTh;
-    uint8_t dsssMinPeakCount;
-    if (en)
-    {
-        dbcCorrTh        = 0x7d;
-        dsssMinPeakCount = 6;
-    }
-    else
-    {
-        dbcCorrTh        = 0x34;
-        dsssMinPeakCount = 3;
-    }
-    *(volatile uint32_t *)0x4000173c = ((*((volatile uint32_t *)0x4000173c)) & 0x7FFFFF00) |
-                                       0x80000000 | (((uint32_t)(dbcCorrTh)) << 0);
-    *(volatile uint32_t *)0x4000177c =
-        ((*((volatile uint32_t *)0x4000177c)) & 0x7FFFFF8F) | 0x80000000 |
-        ((((uint32_t)dsssMinPeakCount) & 0x00000007) << 4);
 
-    strict_mode = en;
+// Strict mode setting will be used only by devices affected by nRF52840 anomaly 172
+void set_strict_mode (bool enable)
+{
+   uint8_t dbcCorrTh;
+   uint8_t dsssMinPeakCount;
+   if (enable == true)
+   {
+      dbcCorrTh = 0x7d;
+      dsssMinPeakCount = 6;
+      *(volatile uint32_t *) 0x4000173c = ((*((volatile uint32_t *) 0x4000173c)) & 0x7FFFFF00) | 0x80000000 | (((uint32_t)(dbcCorrTh)) << 0);
+      *(volatile uint32_t *) 0x4000177c = ((*((volatile uint32_t *) 0x4000177c)) & 0x7FFFFF8F) | 0x80000000 | ((((uint32_t)dsssMinPeakCount) & 0x00000007) << 4);
+   }
+   else
+   {
+      *(volatile uint32_t *) 0x4000173c = ((*((volatile uint32_t *) 0x4000173c)) & 0x7FFFFFFF); // Unset override of dbcCorrTh
+      *(volatile uint32_t *) 0x4000177c = ((*((volatile uint32_t *) 0x4000177c)) & 0x7FFFFFFF); // Unset override of dsssMinPeakCount
+   }
+
+   m_strict_mode = enable;
 }
 
-// Radio configuration used as a workaround for nRF52840 errata 172
-void errata_172_radio_operation(void)
+
+// Radio configuration used as a workaround for nRF52840 anomaly 172
+void anomaly_172_radio_operation(void)
 {
     *(volatile uint32_t *) 0x40001040 = 1;
     *(volatile uint32_t *) 0x40001038 = 1;
 }
 
 
-// Function to gather RSSI data and set strict mode accordingly. Used as part of the workaround for nRF52840 errata 172
-uint8_t errata_172_rssi_check(void)
+// Function to gather RSSI data and set strict mode accordingly. Used as part of the workaround for nRF52840 anomaly 172
+uint8_t anomaly_172_rssi_check(void)
 {
     NRF_RADIO->EVENTS_RSSIEND = 0;
     NRF_RADIO->TASKS_RSSISTART = 1;
@@ -354,12 +353,12 @@ uint8_t errata_172_rssi_check(void)
 }
 
 
-// Used only by devices affected by nRF52840 errata 172
-void ERRATA_172_TIMER_IRQHandler(void)
+// Used only by devices affected by nRF52840 anomaly 172
+void ANOMALY_172_TIMER_IRQHandler(void)
 {
-    if (ERRATA_172_TIMER->EVENTS_COMPARE[0]) {
-        uint8_t rssi = errata_172_rssi_check();
-        if (strict_mode) {
+    if (ANOMALY_172_TIMER->EVENTS_COMPARE[0]) {
+        uint8_t rssi = anomaly_172_rssi_check();
+        if (m_strict_mode) {
             if (rssi > BLOCKER_FIX_RSSI_THRESHOLD) {
                 set_strict_mode(0);
             }
@@ -380,15 +379,15 @@ void ERRATA_172_TIMER_IRQHandler(void)
             }
         }
 
-        ERRATA_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
-        ERRATA_172_TIMER->TASKS_STOP = 1;
-        ERRATA_172_TIMER->TASKS_CLEAR = 1;
-        ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
-        ERRATA_172_TIMER->TASKS_START = 1;
+        ANOMALY_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
+        ANOMALY_172_TIMER->TASKS_STOP = 1;
+        ANOMALY_172_TIMER->TASKS_CLEAR = 1;
+        ANOMALY_172_TIMER->EVENTS_COMPARE[0] = 0;
+        ANOMALY_172_TIMER->TASKS_START = 1;
     }
 
-    if (ERRATA_172_TIMER->EVENTS_COMPARE[1]) {
-        uint8_t rssi = errata_172_rssi_check();
+    if (ANOMALY_172_TIMER->EVENTS_COMPARE[1]) {
+        uint8_t rssi = anomaly_172_rssi_check();
         if (rssi > BLOCKER_FIX_RSSI_THRESHOLD) {
             set_strict_mode(0);
         }
@@ -397,12 +396,12 @@ void ERRATA_172_TIMER_IRQHandler(void)
             set_strict_mode(1);
         }
         // Disable this event.
-        ERRATA_172_TIMER->CC[1] = 0;
-        ERRATA_172_TIMER->EVENTS_COMPARE[1] = 0;
+        ANOMALY_172_TIMER->CC[1] = 0;
+        ANOMALY_172_TIMER->EVENTS_COMPARE[1] = 0;
 
     }
     
-    errata_172_radio_operation();
+    anomaly_172_radio_operation();
 }
 
 
@@ -424,8 +423,8 @@ static void radio_prepare(bool rx)
 
     if (rx)
     {
-        // Enable strict mode if running on a device affected by nRF52840 errata 172
-        if (errata_172_wa_enabled)
+        // Enable strict mode if running on a device affected by nRF52840 anomaly 172
+        if (anomaly_172_wa_enabled)
         {
             set_strict_mode(1);
         }
@@ -437,12 +436,12 @@ static void radio_prepare(bool rx)
     {
         NRF_RADIO->TXPOWER = m_tx_power & RADIO_TXPOWER_TXPOWER_Msk;
 
-        // Stop the timer used by nRF52840 errata 172 if running on an affected device.
-        if (errata_172_wa_enabled)
+        // Stop the timer used by nRF52840 anomaly 172 if running on an affected device.
+        if (anomaly_172_wa_enabled)
         {
-            ERRATA_172_TIMER->TASKS_CLEAR = 1;
-            ERRATA_172_TIMER->TASKS_STOP = 1;
-            ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
+            ANOMALY_172_TIMER->TASKS_CLEAR = 1;
+            ANOMALY_172_TIMER->TASKS_STOP = 1;
+            ANOMALY_172_TIMER->EVENTS_COMPARE[0] = 0;
         }
     }
 }
@@ -460,11 +459,11 @@ static void dtm_test_done(void)
     radio_reset();
     m_state = STATE_IDLE;
     
-    // Enable the timer used by nRF52840 errata 172 if running on an affected device.
-    if (errata_172_wa_enabled)
+    // Enable the timer used by nRF52840 anomaly 172 if running on an affected device.
+    if (anomaly_172_wa_enabled)
     {
-        NVIC_EnableIRQ(ERRATA_172_TIMER_IRQn);
-        NVIC_ClearPendingIRQ(ERRATA_172_TIMER_IRQn);
+        NVIC_EnableIRQ(ANOMALY_172_TIMER_IRQn);
+        NVIC_ClearPendingIRQ(ANOMALY_172_TIMER_IRQn);
     }
 }
 
@@ -684,14 +683,14 @@ uint32_t dtm_wait(void)
             if (m_state == STATE_RECEIVER_TEST)
             {
                 NRF_RADIO->TASKS_RXEN = 1;
-                if (errata_172_wa_enabled)
+                if (anomaly_172_wa_enabled)
                 {
-                    ERRATA_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
-                    ERRATA_172_TIMER->CC[1] = BLOCKER_FIX_WAIT_END;
-                    ERRATA_172_TIMER->TASKS_CLEAR = 1;
-                    ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
-                    ERRATA_172_TIMER->EVENTS_COMPARE[1] = 0;
-                    ERRATA_172_TIMER->TASKS_START = 1;
+                    ANOMALY_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
+                    ANOMALY_172_TIMER->CC[1] = BLOCKER_FIX_WAIT_END;
+                    ANOMALY_172_TIMER->TASKS_CLEAR = 1;
+                    ANOMALY_172_TIMER->EVENTS_COMPARE[0] = 0;
+                    ANOMALY_172_TIMER->EVENTS_COMPARE[1] = 0;
+                    ANOMALY_172_TIMER->TASKS_START = 1;
                 }
 
                 if ((NRF_RADIO->CRCSTATUS == 1) && check_pdu())
@@ -709,28 +708,28 @@ uint32_t dtm_wait(void)
 
         if (m_state == STATE_RECEIVER_TEST && NRF_RADIO->EVENTS_ADDRESS != 0)
         {
-            if (errata_172_wa_enabled)
+            if (anomaly_172_wa_enabled)
             {
-                ERRATA_172_TIMER->TASKS_SHUTDOWN = 1;
+                ANOMALY_172_TIMER->TASKS_SHUTDOWN = 1;
             }
         }
 
         if (m_state == STATE_RECEIVER_TEST && NRF_RADIO->EVENTS_READY != 0)
         {
-            if (errata_172_wa_enabled)
+            if (anomaly_172_wa_enabled)
             {
                 // Check if strict mode is necessary
-                uint8_t rssi = errata_172_rssi_check();
+                uint8_t rssi = anomaly_172_rssi_check();
                 if (rssi > BLOCKER_FIX_RSSI_THRESHOLD) {
                    set_strict_mode(0);
                 }
                 // Start timer to regularly check if strict mode is necessary
-                ERRATA_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
-                ERRATA_172_TIMER->TASKS_CLEAR = 1;
-                ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
-                ERRATA_172_TIMER->TASKS_START = 1;
+                ANOMALY_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
+                ANOMALY_172_TIMER->TASKS_CLEAR = 1;
+                ANOMALY_172_TIMER->EVENTS_COMPARE[0] = 0;
+                ANOMALY_172_TIMER->TASKS_START = 1;
 
-                errata_172_radio_operation();
+                anomaly_172_radio_operation();
             }
         }
 
@@ -833,10 +832,10 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
                     // Workaround for Errata ID 191
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFFFFFF);
 #endif
-                    // Disable the workaround for nRF52840 errata 172.
+                    // Disable the workaround for nRF52840 anomaly 172.
                     set_strict_mode(0);
-                    ERRATA_172_TIMER->TASKS_SHUTDOWN = 1;
-                    errata_172_wa_enabled = false;
+                    ANOMALY_172_TIMER->TASKS_SHUTDOWN = 1;
+                    anomaly_172_wa_enabled = false;
                 
                     return radio_init();
 
@@ -852,10 +851,10 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFFFFFF);
 #endif
 
-                    // Disable the workaround for nRF52840 errata 172.
+                    // Disable the workaround for nRF52840 anomaly 172.
                     set_strict_mode(0);
-                    ERRATA_172_TIMER->TASKS_SHUTDOWN = 1;
-                    errata_172_wa_enabled = false;
+                    ANOMALY_172_TIMER->TASKS_SHUTDOWN = 1;
+                    anomaly_172_wa_enabled = false;
                 
                     return radio_init();
 
@@ -871,10 +870,10 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
                     //  Workaround for Errata ID 191
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFF00FF) | 0x80000000 | (((uint32_t)(196)) << 8);
 
-                    // Enable the workaround for nRF52840 errata 172 on affected devices.
+                    // Enable the workaround for nRF52840 anomaly 172 on affected devices.
                     if ((*(volatile uint32_t *)0x40001788) == 0)
                     {
-                        errata_172_wa_enabled = true;
+                        anomaly_172_wa_enabled = true;
                     }
 
                     return radio_init();
@@ -894,10 +893,10 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
                     //  Workaround for Errata ID 191
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFF00FF) | 0x80000000 | (((uint32_t)(196)) << 8);
 
-                    // Enable the workaround for nRF52840 errata 172 on affected devices.
+                    // Enable the workaround for nRF52840 anomaly 172 on affected devices.
                     if ((*(volatile uint32_t *)0x40001788) == 0)
                     {
-                        errata_172_wa_enabled = true;
+                        anomaly_172_wa_enabled = true;
                     }
 
                     return radio_init();

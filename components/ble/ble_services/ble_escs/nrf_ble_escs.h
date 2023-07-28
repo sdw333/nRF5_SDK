@@ -223,7 +223,7 @@ struct nrf_ble_escs_s
     nrf_ble_escs_write_evt_handler_t write_evt_handler;          //!< Event handler to be called for handling write attempts.
     nrf_ble_escs_read_evt_handler_t  read_evt_handler;           //!< Event handler to be called for handling read attempts.
     uint8_t                        * p_active_slot;
-    nrf_ble_escs_lock_state_read_t * p_lock_state;
+    uint8_t                          lock_state;
 };
 
 

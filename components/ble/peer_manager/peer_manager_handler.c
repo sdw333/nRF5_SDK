@@ -118,6 +118,7 @@ static const char * m_data_id_str[] =
     "Peer rank",
     "Bonding data",
     "Local database",
+    "Central address resolution",
 };
 
 static const char * m_data_action_str[] =

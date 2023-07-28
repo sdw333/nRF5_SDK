@@ -43,7 +43,6 @@
 #include "es_gatts_write.h"
 #include "es_slot.h"
 
-static nrf_ble_escs_lock_state_read_t m_lock_state;
 static uint8_t                        m_active_slot;
 
 /**@brief Function checking if beacon is unlocked.
@@ -55,7 +54,7 @@ static uint8_t                        m_active_slot;
  */
 static bool is_beacon_unlocked(const nrf_ble_escs_t * p_escs)
 {
-    return m_lock_state != NRF_BLE_ESCS_LOCK_STATE_LOCKED;
+    return p_escs->lock_state != NRF_BLE_ESCS_LOCK_STATE_LOCKED;
 }
 
 
@@ -152,7 +151,7 @@ void es_gatts_handle_read(nrf_ble_escs_t * p_escs, uint16_t uuid, uint16_t val_h
 
         else
         {
-            err_code = es_gatts_read_handle_unlocked_read(p_escs, uuid, val_handle, m_active_slot, m_lock_state);
+            err_code = es_gatts_read_handle_unlocked_read(p_escs, uuid, val_handle, m_active_slot);
             APP_ERROR_CHECK(err_code);
         }
     }
@@ -167,7 +166,7 @@ void es_gatts_handle_read(nrf_ble_escs_t * p_escs, uint16_t uuid, uint16_t val_h
 
         else
         {
-            err_code = es_gatts_read_handle_locked_read(p_escs, uuid, m_lock_state);
+            err_code = es_gatts_read_handle_locked_read(p_escs, uuid);
             APP_ERROR_CHECK(err_code);
         }
     }
@@ -179,10 +178,9 @@ ret_code_t es_gatts_init(nrf_ble_escs_t * p_ble_escs)
     VERIFY_PARAM_NOT_NULL(p_ble_escs);
 
     m_active_slot = 0;
-    m_lock_state  = NRF_BLE_ESCS_LOCK_STATE_LOCKED;
-
+    
     p_ble_escs->p_active_slot = &m_active_slot;
-    p_ble_escs->p_lock_state  = &m_lock_state;
+    p_ble_escs->lock_state  = NRF_BLE_ESCS_LOCK_STATE_LOCKED;
 
     return NRF_SUCCESS;
 }

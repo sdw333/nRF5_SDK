@@ -118,7 +118,8 @@ typedef uint16_t pm_sec_error_code_t;
 #define PM_PEER_DATA_ID_APPLICATION_V1             4     /**< @brief The data ID of the first version of application data. */
 #define PM_PEER_DATA_ID_GATT_REMOTE_V2             5     /**< @brief The data ID of the second version of remote GATT data. */
 #define PM_PEER_DATA_ID_PEER_RANK_V1               6     /**< @brief The data ID of the first version of the rank. */
-#define PM_PEER_DATA_ID_LAST_VX                    9     /**< @brief The data ID after the last valid one. */
+#define PM_PEER_DATA_ID_CENTRAL_ADDR_RES_V1        9     /**< @brief The data ID of the first version of central address resolution. */
+#define PM_PEER_DATA_ID_LAST_VX                    10     /**< @brief The data ID after the last valid one. */
 #define PM_PEER_DATA_ID_INVALID_VX                 0xFF  /**< @brief A data ID guaranteed to be invalid. */
 /**@}*/
 
@@ -133,6 +134,7 @@ typedef enum
     PM_PEER_DATA_ID_GATT_LOCAL              = PM_PEER_DATA_ID_GATT_LOCAL_V2,              /**< @brief The data ID for local GATT data (sys attributes). Type: @ref pm_peer_data_local_gatt_db_t. */
     PM_PEER_DATA_ID_GATT_REMOTE             = PM_PEER_DATA_ID_GATT_REMOTE_V2,             /**< @brief The data ID for remote GATT data. Type: uint8_t array. */
     PM_PEER_DATA_ID_PEER_RANK               = PM_PEER_DATA_ID_PEER_RANK_V1,               /**< @brief The data ID for peer rank. See @ref pm_peer_rank_highest. Type: uint32_t. */
+    PM_PEER_DATA_ID_CENTRAL_ADDR_RES        = PM_PEER_DATA_ID_CENTRAL_ADDR_RES_V1,        /**< @brief The data ID for central address resolution. See @ref pm_peer_id_list. Type: uint32_t. */
     PM_PEER_DATA_ID_APPLICATION             = PM_PEER_DATA_ID_APPLICATION_V1,             /**< @brief The data ID for application data. Type: uint8_t array. */
     PM_PEER_DATA_ID_LAST                    = PM_PEER_DATA_ID_LAST_VX,                    /**< @brief One more than the highest data ID. */
     PM_PEER_DATA_ID_INVALID                 = PM_PEER_DATA_ID_INVALID_VX,                 /**< @brief A data ID guaranteed to be invalid. */
