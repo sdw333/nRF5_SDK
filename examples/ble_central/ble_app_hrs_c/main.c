@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014 - 2019, Nordic Semiconductor ASA
+ * Copyright (c) 2014 - 2021, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -123,12 +123,18 @@ static bool     m_memory_access_in_progress;                        /**< Flag to
 static ble_gap_scan_params_t const m_scan_param =
 {
     .active        = 0x01,
+#if (NRF_SD_BLE_API_VERSION > 7)
+    .interval_us   = NRF_BLE_SCAN_SCAN_INTERVAL * UNIT_0_625_MS,
+    .window_us     = NRF_BLE_SCAN_SCAN_WINDOW * UNIT_0_625_MS,
+#else
     .interval      = NRF_BLE_SCAN_SCAN_INTERVAL,
     .window        = NRF_BLE_SCAN_SCAN_WINDOW,
+#endif // (NRF_SD_BLE_API_VERSION > 7)
     .filter_policy = BLE_GAP_SCAN_FP_WHITELIST,
     .timeout       = SCAN_DURATION_WITELIST,
     .scan_phys     = BLE_GAP_PHY_1MBPS,
 };
+
 
 /**@brief Names which the central applications will scan for, and which will be advertised by the peripherals.
  *  if these are set to empty strings, the UUIDs defined below will be used
@@ -200,6 +206,7 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 static void pm_evt_handler(pm_evt_t const * p_evt)
 {
     pm_handler_on_pm_evt(p_evt);
+    pm_handler_disconnect_on_sec_failure(p_evt);
     pm_handler_flash_clean(p_evt);
 
     switch (p_evt->evt_id)
@@ -521,13 +528,6 @@ static void hrs_c_evt_handler(ble_hrs_c_t * p_hrs_c, ble_hrs_c_evt_t * p_hrs_c_e
                                                 p_hrs_c_evt->conn_handle,
                                                 &p_hrs_c_evt->params.peer_db);
             APP_ERROR_CHECK(err_code);
-
-            // Initiate bonding.
-            err_code = pm_conn_secure(p_hrs_c_evt->conn_handle, false);
-            if (err_code != NRF_ERROR_BUSY)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
 
             // Heart rate service discovered. Enable notification of Heart Rate Measurement.
             err_code = ble_hrs_c_hrm_notif_enable(p_hrs_c);
