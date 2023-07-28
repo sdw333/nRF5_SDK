@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 - 2021, Nordic Semiconductor ASA
+ * Copyright (c) 2019 - 2020, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -57,12 +57,11 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "ocrypto_sha512.h"
+#include "include/ocrypto_sha512.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /**
  * Maximum key length.
@@ -168,4 +167,3 @@ void ocrypto_hmac_sha512(
 #endif /* #ifndef OCRYPTO_HMAC_SHA512_H */
 
 /** @} */
-

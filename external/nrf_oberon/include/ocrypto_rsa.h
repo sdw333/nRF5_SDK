@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 - 2021, Nordic Semiconductor ASA
+ * Copyright (c) 2019 - 2020, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -61,11 +61,9 @@
 
 #include "ocrypto_rsa_key.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /**@name 1024-bit RSA Functions.
  *
@@ -642,4 +640,3 @@ int ocrypto_rsa2048_pss_sha256_verify(
 #endif /* #ifndef OCRYPTO_RSA_H */
 
 /** @} */
-

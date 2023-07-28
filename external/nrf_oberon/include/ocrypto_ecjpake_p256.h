@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 - 2021, Nordic Semiconductor ASA
+ * Copyright (c) 2019 - 2020, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -99,7 +99,6 @@ int ocrypto_ecjpake_verify_key(
     const uint8_t r[32],
     const char *id, size_t id_len);
 
-
 /**
  * EC-JPAKE-P256 generator derivation.
  *
@@ -170,4 +169,3 @@ int ocrypto_ecjpake_get_secret_key(
 #endif /* #ifndef OCRYPTO_ECJPAKE_P256_H */
 
 /** @} */
-

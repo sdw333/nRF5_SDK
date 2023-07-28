@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 - 2021, Nordic Semiconductor ASA
+ * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -78,6 +78,7 @@ volatile bool                  m_nfc_pherip = false;               /**< Flag ind
 static uint8_t                 m_ndef_msg_buf[NDEF_MSG_BUFF_SIZE]; /**< NFC tag NDEF message buffer. */
 static ble_advdata_tk_value_t  m_oob_auth_key;                     /**< Temporary Key buffer used in OOB legacy pairing mode. */
 static uint8_t               * m_tk_group[TK_MAX_NUM];             /**< Locations of TK in an NDEF message. */
+static ble_gap_lesc_oob_data_t m_ble_lesc_oob_data;                /**< LESC OOB data used in LESC OOB pairing mode. */
 static ble_gap_sec_params_t    m_sec_param;                        /**< Current Peer Manager secure parameters configuration. */
 
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context);
@@ -182,21 +183,24 @@ static void nfc_callback(void          * p_context,
 ret_code_t nfc_ble_pair_data_set()
 {
     ret_code_t err_code = NRF_SUCCESS;
+    ble_gap_lesc_p256_pk_t const * p_pk_own;
 
     // Provide information about available buffer size to the encoding function.
     uint32_t ndef_msg_len = sizeof(m_ndef_msg_buf);
 
-    // Generate LESC OOB data
-    err_code = nrf_ble_lesc_own_oob_data_generate();
-    VERIFY_SUCCESS(err_code);
+    // Get the local LESC public key
+    p_pk_own = nrf_ble_lesc_public_key_get();
 
-    ble_gap_lesc_oob_data_t * p_lesc_oob_data = nrf_ble_lesc_own_oob_data_get();
-    VERIFY_PARAM_NOT_NULL(p_lesc_oob_data);
+    // Generate LESC OOB data.
+    err_code = sd_ble_gap_lesc_oob_data_get(BLE_CONN_HANDLE_INVALID,
+                                            p_pk_own,
+                                            &m_ble_lesc_oob_data);
+    VERIFY_SUCCESS(err_code);
 
     // Encode NDEF message with Secure Simple Pairing OOB data - TK value and LESC Random and Confirmation Keys.
     err_code = nfc_ble_pair_msg_updatable_tk_encode(NFC_BLE_PAIR_MSG_BLUETOOTH_LE_SHORT,
                                                     &m_oob_auth_key,
-                                                    p_lesc_oob_data,
+                                                    &m_ble_lesc_oob_data,
                                                     m_ndef_msg_buf,
                                                     &ndef_msg_len,
                                                     m_tk_group,
@@ -210,20 +214,6 @@ ret_code_t nfc_ble_pair_data_set()
     return err_code;
 }
 
-/**
- * @brief Function for getting peer OOB data that have been transmitted over NFC.
- */
-static ble_gap_lesc_oob_data_t * nfc_peer_oob_data_get(uint16_t conn_handle)
-{
-    UNUSED_PARAMETER(conn_handle);
-
-    if (is_nfc_central_get())
-    {
-        return get_lesc_oob_peer_data();
-    }
-
-    return NULL;
-}
 
 ret_code_t nfc_ble_pair_init(void)
 {
@@ -236,8 +226,6 @@ ret_code_t nfc_ble_pair_init(void)
     {
         VERIFY_SUCCESS(err_code);
     }
-
-    nrf_ble_lesc_peer_oob_data_handler_set(nfc_peer_oob_data_get);
 
     // Start NFC.
     err_code = nfc_t2t_setup(nfc_callback, NULL);
@@ -260,18 +248,20 @@ ret_code_t nfc_ble_pair_init(void)
  */
 static ret_code_t lesc_oob_update(uint16_t conn_handle)
 {
-    ret_code_t err_code = NRF_SUCCESS;
+    ble_gap_lesc_p256_pk_t  const * p_pk_own;
+    ret_code_t                      err_code = NRF_SUCCESS;
     
-    // Generate new LESC keys
-    err_code = nrf_ble_lesc_keypair_generate();
-    VERIFY_SUCCESS(err_code);
-
+    // Get the newly LESC public key
+    p_pk_own = nrf_ble_lesc_public_key_get();
+    
     // Generate LESC OOB data.
-    err_code = nrf_ble_lesc_own_oob_data_generate();
+    err_code = sd_ble_gap_lesc_oob_data_get(conn_handle,
+                                            p_pk_own,
+                                            &m_ble_lesc_oob_data);
     VERIFY_SUCCESS(err_code);
 
     // Update NDEF message with new LESC OOB data.
-    err_code = nfc_lesc_data_update(nrf_ble_lesc_own_oob_data_get());
+    err_code = nfc_lesc_data_update(&m_ble_lesc_oob_data);
     VERIFY_SUCCESS(err_code);
 
     return NRF_SUCCESS;
@@ -316,6 +306,33 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                 APP_ERROR_CHECK(err_code);
             }
 
+            break;
+
+        // Upon LESC Diffie_Hellman key request, set the OOB data if this is LESC OOB pairing
+        case BLE_GAP_EVT_LESC_DHKEY_REQUEST:
+
+            // If LESC OOB pairing is on, perform authentication with OOB data
+            if (p_ble_evt->evt.gap_evt.params.lesc_dhkey_request.oobd_req)
+            {
+                uint16_t conn_handle = p_gap_evt->conn_handle;
+
+                // If NFC central pair
+                if (is_nfc_central_get())
+                {
+                    err_code = sd_ble_gap_lesc_oob_data_set(conn_handle,
+                                                            NULL,
+                                                            get_lesc_oob_peer_data());
+                    APP_ERROR_CHECK(err_code);
+                }
+                else if (m_nfc_pherip)
+                {
+                    err_code = sd_ble_gap_lesc_oob_data_set(p_ble_evt->evt.gap_evt.conn_handle,
+                                                            &m_ble_lesc_oob_data,
+                                                            NULL);
+                    APP_ERROR_CHECK(err_code);
+                }
+            }
+            
             break;
 
         case BLE_GAP_EVT_AUTH_STATUS:

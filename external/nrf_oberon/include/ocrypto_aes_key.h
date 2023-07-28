@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 - 2021, Nordic Semiconductor ASA
+ * Copyright (c) 2019 - 2020, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -51,9 +51,7 @@
 #ifndef OCRYPTO_AES_KEY_H
 #define OCRYPTO_AES_KEY_H
 
-#include <stddef.h>
 #include <stdint.h>
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,4 +68,3 @@ extern "C" {
 #endif /* #ifndef OCRYPTO_AES_KEY_H */
 
 /** @} */
-

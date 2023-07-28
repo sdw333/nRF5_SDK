@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2016 - 2021, Nordic Semiconductor ASA
+ * Copyright (c) 2016 - 2020, Nordic Semiconductor ASA
  *
  * All rights reserved.
  *
@@ -438,16 +438,6 @@ static inline void std_header_set(uint32_t severity_mid,
     p_header->base.std.in_progress = 0;
 }
 
-#if NRF_LOG_DEFERRED
-/**
- * When using RTOS, application can overide this function so that it could unblock 
- * the task that is responsible for flushing the logs.
- */
-__WEAK void log_pending_hook( void )
-{
-}
-#endif
-
 /**
  * @brief Allocates chunk in a buffer for one entry and injects overflow if
  * there is no room for requested entry.
@@ -569,7 +559,6 @@ static inline void std_n(uint32_t           severity_mid,
         }
         std_header_set(severity_mid, p_str, nargs, wr_idx, mask);
     }
-
     if (m_log_data.autoflush)
     {
 #if NRF_LOG_NON_DEFFERED_CRITICAL_REGION_ENABLED
@@ -582,10 +571,6 @@ static inline void std_n(uint32_t           severity_mid,
         CRITICAL_REGION_EXIT();
 #endif // NRF_LOG_NON_DEFFERED_CRITICAL_REGION_ENABLED
     }
-
-#if (NRF_LOG_DEFERRED == 1)
-    log_pending_hook();
-#endif
 
 }
 
@@ -703,6 +688,9 @@ void nrf_log_frontend_hexdump(uint32_t           severity_mid,
         p_header->base.hexdump.len         = length;
         p_header->base.hexdump.type        = HEADER_TYPE_HEXDUMP;
         p_header->base.hexdump.in_progress = 0;
+
+
+
     }
 
     if (m_log_data.autoflush)
@@ -717,10 +705,6 @@ void nrf_log_frontend_hexdump(uint32_t           severity_mid,
         CRITICAL_REGION_EXIT();
 #endif // NRF_LOG_NON_DEFFERED_CRITICAL_REGION_ENABLED
     }
-
-#if (NRF_LOG_DEFERRED == 1)
-    log_pending_hook();
-#endif
 }
 
 
