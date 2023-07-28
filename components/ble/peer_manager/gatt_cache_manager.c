@@ -1,30 +1,30 @@
 /**
  * Copyright (c) 2015 - 2018, Nordic Semiconductor ASA
- * 
+ *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form, except as embedded into a Nordic
  *    Semiconductor ASA integrated circuit in a product or a software update for
  *    such product, must reproduce the above copyright notice, this list of
  *    conditions and the following disclaimer in the documentation and/or other
  *    materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- * 
+ *
  * 4. This software, with or without modification, must only be used with a
  *    Nordic Semiconductor ASA integrated circuit.
- * 
+ *
  * 5. Any software provided in binary form under this license must not be reverse
  *    engineered, decompiled, modified and/or disassembled.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
  * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -35,7 +35,7 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  */
 #include "sdk_common.h"
 #if NRF_MODULE_ENABLED(PEER_MANAGER)
@@ -49,8 +49,20 @@
 #include "id_manager.h"
 #include "gatts_cache_manager.h"
 #include "peer_database.h"
-#include "pm_mutex.h"
+#include "nrf_mtx.h"
 
+#define NRF_LOG_MODULE_NAME peer_manager_gcm
+#if PM_LOG_ENABLED
+    #define NRF_LOG_LEVEL       PM_LOG_LEVEL
+    #define NRF_LOG_INFO_COLOR  PM_LOG_INFO_COLOR
+    #define NRF_LOG_DEBUG_COLOR PM_LOG_DEBUG_COLOR
+#else
+    #define NRF_LOG_LEVEL       0
+#endif // PM_LOG_ENABLED
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+NRF_LOG_MODULE_REGISTER();
+#include "nrf_strerror.h"
 
 // The number of registered event handlers.
 #define GCM_EVENT_HANDLERS_CNT      (sizeof(m_evt_handlers) / sizeof(m_evt_handlers[0]))
@@ -66,7 +78,7 @@ static pm_evt_handler_internal_t m_evt_handlers[] =
 };
 
 static bool                           m_module_initialized;
-static uint8_t                        m_db_update_in_progress_mutex;  /**< Mutex indicating whether a local DB write operation is ongoing. */
+static nrf_mtx_t                      m_db_update_in_progress_mutex;  /**< Mutex indicating whether a local DB write operation is ongoing. */
 static ble_conn_state_user_flag_id_t  m_flag_local_db_update_pending; /**< Flag ID for flag collection to keep track of which connections need a local DB update procedure. */
 static ble_conn_state_user_flag_id_t  m_flag_local_db_apply_pending;  /**< Flag ID for flag collection to keep track of which connections need a local DB apply procedure. */
 static ble_conn_state_user_flag_id_t  m_flag_service_changed_pending; /**< Flag ID for flag collection to keep track of which connections need to be sent a service changed indication. */
@@ -131,7 +143,8 @@ static void send_unexpected_error(uint16_t conn_handle, ret_code_t err_code)
         {
             .error_unexpected =
             {
-                .error = err_code,
+                .error     = err_code,
+                .fds_error = false
             }
         }
     };
@@ -178,6 +191,9 @@ static void local_db_apply_in_evt(uint16_t conn_handle)
         case NRF_ERROR_INVALID_DATA:
             event.evt_id = PM_EVT_LOCAL_DB_CACHE_APPLY_FAILED;
 
+            NRF_LOG_WARNING("The local database has changed, so some subscriptions to notifications "\
+                            "and indications could not be restored for conn_handle %d",
+                            conn_handle);
             evt_send(&event);
             break;
 
@@ -186,6 +202,10 @@ static void local_db_apply_in_evt(uint16_t conn_handle)
             break;
 
         default:
+            NRF_LOG_ERROR("gscm_local_db_cache_apply() returned %s which should not happen. "\
+                          "conn_handle: %d",
+                          nrf_strerror_get(err_code),
+                          conn_handle);
             send_unexpected_error(conn_handle, err_code);
             break;
     }
@@ -243,11 +263,15 @@ static bool local_db_update_in_evt(uint16_t conn_handle)
                 .conn_handle = conn_handle,
             };
 
+            NRF_LOG_WARNING("Flash full. Could not store data for conn_handle: %d", conn_handle);
             evt_send(&event);
             break;
         }
 
         default:
+            NRF_LOG_ERROR("gscm_local_db_cache_update() returned %s for conn_handle: %d",
+                          nrf_strerror_get(err_code),
+                          conn_handle);
             send_unexpected_error(conn_handle, err_code);
             break;
     }
@@ -311,6 +335,9 @@ static void service_changed_send_in_evt(uint16_t conn_handle)
             break;
 
         default:
+            NRF_LOG_ERROR("gscm_service_changed_ind_send() returned %s for conn_handle: %d",
+                          nrf_strerror_get(err_code),
+                          conn_handle);
             send_unexpected_error(conn_handle, err_code);
             break;
     }
@@ -338,7 +365,7 @@ static __INLINE void apply_pending_flags_check(void)
 static void db_update_pending_handle(uint16_t conn_handle, void * p_context)
 {
     UNUSED_PARAMETER(p_context);
-    if (pm_mutex_lock(&m_db_update_in_progress_mutex, 0))
+    if (nrf_mtx_trylock(&m_db_update_in_progress_mutex))
     {
         if (local_db_update_in_evt(conn_handle))
         {
@@ -347,7 +374,7 @@ static void db_update_pending_handle(uint16_t conn_handle, void * p_context)
         }
         else
         {
-            pm_mutex_unlock(&m_db_update_in_progress_mutex, 0);
+            nrf_mtx_unlock(&m_db_update_in_progress_mutex);
         }
     }
 }
@@ -455,7 +482,10 @@ void gcm_pdb_evt_handler(pm_evt_t * p_event)
 #endif
 
             case PM_PEER_DATA_ID_GATT_LOCAL:
-                pm_mutex_unlock(&m_db_update_in_progress_mutex, 0);
+                if (m_db_update_in_progress_mutex == NRF_MTX_LOCKED)
+                {
+                    nrf_mtx_unlock(&m_db_update_in_progress_mutex);
+                }
                 // Expecting a call to update_pending_flags_check() immediately.
                 break;
 
@@ -486,10 +516,12 @@ ret_code_t gcm_init()
       || (m_flag_service_changed_sent     == BLE_CONN_STATE_USER_FLAG_INVALID)
       )
     {
+        NRF_LOG_ERROR("Could not acquire conn_state user flags. Increase "\
+                      "BLE_CONN_STATE_USER_FLAG_COUNT in the ble_conn_state module.");
         return NRF_ERROR_INTERNAL;
     }
 
-    pm_mutex_init(&m_db_update_in_progress_mutex, 1);
+    nrf_mtx_init(&m_db_update_in_progress_mutex);
 
     m_module_initialized = true;
 

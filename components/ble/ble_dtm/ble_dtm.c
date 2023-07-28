@@ -1,30 +1,30 @@
 /**
  * Copyright (c) 2012 - 2018, Nordic Semiconductor ASA
- * 
+ *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form, except as embedded into a Nordic
  *    Semiconductor ASA integrated circuit in a product or a software update for
  *    such product, must reproduce the above copyright notice, this list of
  *    conditions and the following disclaimer in the documentation and/or other
  *    materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- * 
+ *
  * 4. This software, with or without modification, must only be used with a
  *    Nordic Semiconductor ASA integrated circuit.
- * 
+ *
  * 5. Any software provided in binary form under this license must not be reverse
  *    engineered, decompiled, modified and/or disassembled.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
  * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -35,7 +35,7 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  */
 #include "sdk_common.h"
 #if NRF_MODULE_ENABLED(BLE_DTM)
@@ -130,7 +130,7 @@ static uint32_t          m_current_time = 0;                                 /**
 
 // Nordic specific configuration values (not defined by BLE standard).
 // Definition of initial values found in ble_dtm.h
-static int32_t           m_tx_power          = DEFAULT_TX_POWER;             /**< TX power for transmission test, default to maximum value (+4 dBm). */
+static int32_t           m_tx_power          = DEFAULT_TX_POWER;             /**< TX power for transmission test, default 0 dBm. */
 static NRF_TIMER_Type *  mp_timer            = DEFAULT_TIMER;                /**< Timer to be used. */
 static IRQn_Type         m_timer_irq         = DEFAULT_TIMER_IRQn;           /**< which interrupt line to clear on every timeout */
 
@@ -151,6 +151,15 @@ static uint32_t          m_crc_poly          = 0x0000065B;                   /**
 static uint32_t          m_crc_init          = 0x00555555;                   /**< Initial value for CRC calculation. */
 static uint8_t           m_radio_mode        = RADIO_MODE_MODE_Ble_1Mbit;    /**< nRF51 specific radio mode value. */
 static uint32_t          m_txIntervaluS      = 2500;                          /**< Time between start of Tx packets (in uS). */
+
+// nRF52840 errata 172
+static bool              errata_172_wa_enabled  = false;                         /**< Enable or disable the workaround for Errata 172. */
+static uint8_t           strict_mode            = 0;                             /**< Enable or disable strict mode to workaround Errata 172. */
+#define BLOCKER_FIX_RSSI_THRESHOLD              95
+#define BLOCKER_FIX_WAIT_DEFAULT                10000 // 10 ms
+#define BLOCKER_FIX_WAIT_END                    500 // 500 us
+#define BLOCKER_FIX_CNTDETECTTHR                15
+#define BLOCKER_FIX_CNTADDRTHR                  2
 
 
 /**@brief Function for verifying that a received PDU has the expected structure and content.
@@ -184,7 +193,7 @@ static bool check_pdu(void)
         return false;
     }
 #endif
-    
+
     if (pdu_packet_type == DTM_PKT_PRBS9)
     {
         // Payload does not consist of one repeated octet; must compare ir with entire block into
@@ -208,7 +217,7 @@ static bool check_pdu(void)
         // No valid packet type set.
         return false;
     }
-    
+
     for (k = 0; k < length; k++)
     {
         // Check repeated pattern filling the PDU payload
@@ -258,7 +267,7 @@ static uint32_t radio_init(void)
     // Turn off radio before configuring it
     radio_reset();
 
-    NRF_RADIO->TXPOWER = m_tx_power;
+    NRF_RADIO->TXPOWER = m_tx_power & RADIO_TXPOWER_TXPOWER_Msk;
     NRF_RADIO->MODE    = m_radio_mode << RADIO_MODE_MODE_Pos;
 
     // Set the access address, address0/prefix0 used for both Rx and Tx address
@@ -302,6 +311,100 @@ static uint32_t radio_init(void)
     return DTM_SUCCESS;
 }
 
+// Strict mode used only by devices affected by nRF52840 errata 172
+void set_strict_mode(uint8_t en)
+{
+    uint8_t dbcCorrTh;
+    uint8_t dsssMinPeakCount;
+    if (en)
+    {
+        dbcCorrTh        = 0x7d;
+        dsssMinPeakCount = 6;
+    }
+    else
+    {
+        dbcCorrTh        = 0x34;
+        dsssMinPeakCount = 3;
+    }
+    *(volatile uint32_t *)0x4000173c = ((*((volatile uint32_t *)0x4000173c)) & 0x7FFFFF00) |
+                                       0x80000000 | (((uint32_t)(dbcCorrTh)) << 0);
+    *(volatile uint32_t *)0x4000177c =
+        ((*((volatile uint32_t *)0x4000177c)) & 0x7FFFFF8F) | 0x80000000 |
+        ((((uint32_t)dsssMinPeakCount) & 0x00000007) << 4);
+
+    strict_mode = en;
+}
+
+// Radio configuration used as a workaround for nRF52840 errata 172
+void errata_172_radio_operation(void)
+{
+    *(volatile uint32_t *) 0x40001040 = 1;
+    *(volatile uint32_t *) 0x40001038 = 1;
+}
+
+
+// Function to gather RSSI data and set strict mode accordingly. Used as part of the workaround for nRF52840 errata 172
+uint8_t errata_172_rssi_check(void)
+{
+    NRF_RADIO->EVENTS_RSSIEND = 0;
+    NRF_RADIO->TASKS_RSSISTART = 1;
+    while (NRF_RADIO->EVENTS_RSSIEND == 0);
+    uint8_t rssi = NRF_RADIO->RSSISAMPLE;
+    return rssi;
+}
+
+
+// Used only by devices affected by nRF52840 errata 172
+void ERRATA_172_TIMER_IRQHandler(void)
+{
+    if (ERRATA_172_TIMER->EVENTS_COMPARE[0]) {
+        uint8_t rssi = errata_172_rssi_check();
+        if (strict_mode) {
+            if (rssi > BLOCKER_FIX_RSSI_THRESHOLD) {
+                set_strict_mode(0);
+            }
+        }
+        else 
+        {
+            uint8_t too_many_detects = 0;
+            uint32_t packetcnt2 = *(volatile uint32_t *) 0x40001574;
+            uint32_t detect_cnt = packetcnt2 & 0xffff;
+            uint32_t addr_cnt   = (packetcnt2 >> 16) & 0xffff;
+
+            if ((detect_cnt > BLOCKER_FIX_CNTDETECTTHR) && (addr_cnt < BLOCKER_FIX_CNTADDRTHR)) {
+                too_many_detects = 1;
+            }
+         
+            if ((rssi < BLOCKER_FIX_RSSI_THRESHOLD) || too_many_detects) {
+                set_strict_mode(1);
+            }
+        }
+
+        ERRATA_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
+        ERRATA_172_TIMER->TASKS_STOP = 1;
+        ERRATA_172_TIMER->TASKS_CLEAR = 1;
+        ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
+        ERRATA_172_TIMER->TASKS_START = 1;
+    }
+
+    if (ERRATA_172_TIMER->EVENTS_COMPARE[1]) {
+        uint8_t rssi = errata_172_rssi_check();
+        if (rssi > BLOCKER_FIX_RSSI_THRESHOLD) {
+            set_strict_mode(0);
+        }
+        else
+        {
+            set_strict_mode(1);
+        }
+        // Disable this event.
+        ERRATA_172_TIMER->CC[1] = 0;
+        ERRATA_172_TIMER->EVENTS_COMPARE[1] = 0;
+
+    }
+    
+    errata_172_radio_operation();
+}
+
 
 /**@brief Function for preparing the radio. At start of each test: Turn off RF, clear interrupt flags of RF, initialize the radio
  *        at given RF channel.
@@ -321,12 +424,26 @@ static void radio_prepare(bool rx)
 
     if (rx)
     {
+        // Enable strict mode if running on a device affected by nRF52840 errata 172
+        if (errata_172_wa_enabled)
+        {
+            set_strict_mode(1);
+        }
+        
         NRF_RADIO->EVENTS_END = 0;
         NRF_RADIO->TASKS_RXEN = 1;  // shorts will start radio in RX mode when it is ready
     }
     else // tx
     {
-        NRF_RADIO->TXPOWER = m_tx_power;
+        NRF_RADIO->TXPOWER = m_tx_power & RADIO_TXPOWER_TXPOWER_Msk;
+
+        // Stop the timer used by nRF52840 errata 172 if running on an affected device.
+        if (errata_172_wa_enabled)
+        {
+            ERRATA_172_TIMER->TASKS_CLEAR = 1;
+            ERRATA_172_TIMER->TASKS_STOP = 1;
+            ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
+        }
     }
 }
 
@@ -342,6 +459,13 @@ static void dtm_test_done(void)
 
     radio_reset();
     m_state = STATE_IDLE;
+    
+    // Enable the timer used by nRF52840 errata 172 if running on an affected device.
+    if (errata_172_wa_enabled)
+    {
+        NVIC_EnableIRQ(ERRATA_172_TIMER_IRQn);
+        NVIC_ClearPendingIRQ(ERRATA_172_TIMER_IRQn);
+    }
 }
 
 
@@ -531,6 +655,7 @@ uint32_t dtm_init(void)
     {
         return DTM_ERROR_ILLEGAL_CONFIGURATION;
     }
+
     m_new_event     = false;
     m_state         = STATE_IDLE;
     m_packet_length = 0;
@@ -559,6 +684,16 @@ uint32_t dtm_wait(void)
             if (m_state == STATE_RECEIVER_TEST)
             {
                 NRF_RADIO->TASKS_RXEN = 1;
+                if (errata_172_wa_enabled)
+                {
+                    ERRATA_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
+                    ERRATA_172_TIMER->CC[1] = BLOCKER_FIX_WAIT_END;
+                    ERRATA_172_TIMER->TASKS_CLEAR = 1;
+                    ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
+                    ERRATA_172_TIMER->EVENTS_COMPARE[1] = 0;
+                    ERRATA_172_TIMER->TASKS_START = 1;
+                }
+
                 if ((NRF_RADIO->CRCSTATUS == 1) && check_pdu())
                 {
                     // Count the number of successfully received packets
@@ -570,6 +705,33 @@ uint32_t dtm_wait(void)
                 memset(&m_pdu, 0, DTM_PDU_MAX_MEMORY_SIZE);
             }
             // If no RECEIVER_TEST is running, ignore incoming packets (but do clear IRQ!)
+        }
+
+        if (m_state == STATE_RECEIVER_TEST && NRF_RADIO->EVENTS_ADDRESS != 0)
+        {
+            if (errata_172_wa_enabled)
+            {
+                ERRATA_172_TIMER->TASKS_SHUTDOWN = 1;
+            }
+        }
+
+        if (m_state == STATE_RECEIVER_TEST && NRF_RADIO->EVENTS_READY != 0)
+        {
+            if (errata_172_wa_enabled)
+            {
+                // Check if strict mode is necessary
+                uint8_t rssi = errata_172_rssi_check();
+                if (rssi > BLOCKER_FIX_RSSI_THRESHOLD) {
+                   set_strict_mode(0);
+                }
+                // Start timer to regularly check if strict mode is necessary
+                ERRATA_172_TIMER->CC[0] = BLOCKER_FIX_WAIT_DEFAULT;
+                ERRATA_172_TIMER->TASKS_CLEAR = 1;
+                ERRATA_172_TIMER->EVENTS_COMPARE[0] = 0;
+                ERRATA_172_TIMER->TASKS_START = 1;
+
+                errata_172_radio_operation();
+            }
         }
 
         // Check for timeouts:
@@ -588,6 +750,7 @@ uint32_t dtm_wait(void)
         // Other events: No processing
     }
 }
+
 
 uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t payload)
 {
@@ -670,6 +833,10 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
                     // Workaround for Errata ID 191
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFFFFFF);
 #endif
+                    // Disable the workaround for nRF52840 errata 172.
+                    set_strict_mode(0);
+                    ERRATA_172_TIMER->TASKS_SHUTDOWN = 1;
+                    errata_172_wa_enabled = false;
                 
                     return radio_init();
 
@@ -679,11 +846,16 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
 
 #ifdef NRF52840_XXAA
                     // Workaround for Errata ID 164
-                    *(volatile uint32_t *)0x4000173C &= ~0x80000000; 
+                    *(volatile uint32_t *)0x4000173C &= ~0x80000000;
 
                     // Workaround for Errata ID 191
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFFFFFF);
 #endif
+
+                    // Disable the workaround for nRF52840 errata 172.
+                    set_strict_mode(0);
+                    ERRATA_172_TIMER->TASKS_SHUTDOWN = 1;
+                    errata_172_wa_enabled = false;
                 
                     return radio_init();
 
@@ -698,6 +870,12 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
 
                     //  Workaround for Errata ID 191
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFF00FF) | 0x80000000 | (((uint32_t)(196)) << 8);
+
+                    // Enable the workaround for nRF52840 errata 172 on affected devices.
+                    if ((*(volatile uint32_t *)0x40001788) == 0)
+                    {
+                        errata_172_wa_enabled = true;
+                    }
 
                     return radio_init();
 #else
@@ -716,6 +894,12 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
                     //  Workaround for Errata ID 191
                     *(volatile uint32_t *) 0x40001740 = ((*((volatile uint32_t *) 0x40001740)) & 0x7FFF00FF) | 0x80000000 | (((uint32_t)(196)) << 8);
 
+                    // Enable the workaround for nRF52840 errata 172 on affected devices.
+                    if ((*(volatile uint32_t *)0x40001788) == 0)
+                    {
+                        errata_172_wa_enabled = true;
+                    }
+
                     return radio_init();
 #else
                     m_event = LE_TEST_STATUS_EVENT_ERROR;
@@ -726,7 +910,7 @@ uint32_t dtm_cmd(dtm_cmd_t cmd, dtm_freq_t freq, uint32_t length, dtm_pkt_type_t
                     return DTM_ERROR_ILLEGAL_CONFIGURATION;
             }
         }
-        else if(freq == LE_TEST_SETUP_SELECT_MODULATION)
+        else if (freq == LE_TEST_SETUP_SELECT_MODULATION)
         {
             if (length > 0x01) 
             {
@@ -919,14 +1103,19 @@ bool dtm_set_txpower(uint32_t new_tx_power)
 
     // The two most significant bits are not sent in the 6 bit field of the DTM command.
     // These two bits are 1's if and only if the tx_power is a negative number.
-    // All valid negative values have the fourth most significant bit as 1.
-    // All valid positive values have the fourth most significant bit as 0.
-    // By checking this bit, the two most significant bits can be determined.
+    // All valid negative values have a non zero bit in among the two most significant
+    // of the 6-bit value.
+    // By checking these bits, the two most significant bits can be determined.
     new_power8 = (new_power8 & 0x30) != 0 ? (new_power8 | 0xC0) : new_power8;
 
     if (m_state > STATE_IDLE)
     {
         // radio must be idle to change the tx power
+        return false;
+    }
+
+    if (dtm_radio_validate(new_power8, m_radio_mode) != DTM_SUCCESS)
+    {
         return false;
     }
 

@@ -1,30 +1,30 @@
 /**
  * Copyright (c) 2015 - 2018, Nordic Semiconductor ASA
- * 
+ *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form, except as embedded into a Nordic
  *    Semiconductor ASA integrated circuit in a product or a software update for
  *    such product, must reproduce the above copyright notice, this list of
  *    conditions and the following disclaimer in the documentation and/or other
  *    materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- * 
+ *
  * 4. This software, with or without modification, must only be used with a
  *    Nordic Semiconductor ASA integrated circuit.
- * 
+ *
  * 5. Any software provided in binary form under this license must not be reverse
  *    engineered, decompiled, modified and/or disassembled.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
  * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -35,7 +35,7 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  */
 /**
  * @file peer_manager.h
@@ -165,9 +165,6 @@ ret_code_t pm_sec_params_set(ble_gap_sec_params_t * p_sec_params);
  *                                        @ref pm_sec_params_set or by @ref pm_conn_sec_params_reply.
  * @retval NRF_ERROR_INVALID_DATA         If the peer is bonded, but no LTK was found in the stored
  *                                        bonding data. Repairing was not requested.
- * @retval NRF_ERROR_STORAGE_FULL         If there is no more space in persistent storage.
- * @retval NRF_ERROR_NO_MEM               If no more authentication procedures can run in parallel
- *                                        for the given role. See @ref sd_ble_gap_authenticate.
  * @retval NRF_ERROR_INVALID_STATE        If the Peer Manager is not initialized.
  * @retval NRF_ERROR_INTERNAL             If an internal error occurred.
  */
@@ -245,10 +242,14 @@ ret_code_t pm_conn_sec_status_get(uint16_t conn_handle, pm_conn_sec_status_t * p
  *
  * @note The key must continue to reside in application memory as it is not copied by Peer Manager.
  *
+ * @note This function is deprecated. LESC keys are now handled internally if @ref PM_LESC_ENABLED
+ *       is true. If @ref PM_LESC_ENABLED is false, this function works as before.
+ *
  * @param[in]  p_public_key  The public key to use for all subsequent LESC operations.
  *
  * @retval NRF_SUCCESS                    If pairing was initiated successfully.
  * @retval NRF_ERROR_INVALID_STATE        If the Peer Manager is not initialized.
+ * @retval NRF_ERROR_FORBIDDEN            If LESC module support is enabled (see @ref PM_LESC_ENABLED).
  */
 ret_code_t pm_lesc_public_key_set(ble_gap_lesc_p256_pk_t * p_public_key);
 
@@ -475,6 +476,8 @@ ret_code_t pm_peer_id_get(uint16_t conn_handle, pm_peer_id_t * p_peer_id);
  *              }
  *          @endcode
  *
+ * @note This function does not report peer IDs that are pending deletion.
+ *
  * @param[in]  prev_peer_id  The previous peer ID.
  *
  * @return  The next peer ID. If @p prev_peer_id was @ref PM_PEER_ID_INVALID, the
@@ -517,11 +520,14 @@ uint32_t pm_peer_count(void);
  *                         Out: The length in bytes of the read data, if the read was successful.
  *
  * @retval NRF_SUCCESS              If the data was read successfully.
- * @retval NRF_ERROR_INVALID_PARAM  If the the data type or the peer ID was invalid or unallocated,
- *                                  or if the length in @p p_length was not a multiple of 4.
+ * @retval NRF_ERROR_INVALID_PARAM  If the data type or the peer ID was invalid or unallocated.
  * @retval NRF_ERROR_NULL           If a pointer parameter was NULL.
  * @retval NRF_ERROR_NOT_FOUND      If no stored data was found for this peer ID/data ID combination.
- * @retval NRF_ERROR_DATA_SIZE      If the provided buffer was not large enough.
+ * @retval NRF_ERROR_DATA_SIZE      If the provided buffer was not large enough. The data is still
+ *                                  copied, filling the provided buffer. Note that this error can
+ *                                  occur even if loading the same size as was stored, because the
+ *                                  underlying layers round the length up to the nearest word (4 bytes)
+ *                                  when storing.
  * @retval NRF_ERROR_INVALID_STATE  If the Peer Manager is not initialized.
  */
 ret_code_t pm_peer_data_load(pm_peer_id_t      peer_id,
@@ -560,6 +566,8 @@ ret_code_t pm_peer_data_app_data_load(pm_peer_id_t peer_id,
  * @note The data written using this function might later be overwritten as a result of internal
  *       operations in the Peer Manager. A Peer Manager event is sent each time data is updated,
  *       regardless of whether the operation originated internally or from action by the user.
+ *       Data with @p data_id @ref PM_PEER_DATA_ID_GATT_REMOTE @ref PM_PEER_DATA_ID_APPLICATION is
+ *       never (over)written internally.
  *
  * @param[in]  peer_id  Peer ID to set data for.
  * @param[in]  data_id  Which type of data to set.
@@ -575,6 +583,7 @@ ret_code_t pm_peer_data_app_data_load(pm_peer_id_t peer_id,
  * @retval NRF_ERROR_NOT_FOUND      If no peer was found for the peer ID.
  * @retval NRF_ERROR_BUSY           If the underlying flash handler is busy with other flash
  *                                  operations. Try again after receiving a Peer Manager event.
+ * @retval NRF_ERROR_STORAGE_FULL   If there is not enough space in persistent storage.
  * @retval NRF_ERROR_FORBIDDEN      If data ID is @ref PM_PEER_DATA_ID_BONDING and the new bonding
  *                                  data also corresponds to another bonded peer. No data is written
  *                                  so duplicate entries are avoided.
@@ -650,7 +659,7 @@ ret_code_t pm_peer_data_delete(pm_peer_id_t peer_id, pm_peer_data_id_t data_id);
  *
  * @retval NRF_SUCCESS              If the store operation for bonding data was initiated successfully.
  * @retval NRF_ERROR_NULL           If @p p_bonding_data or @p p_new_peer_id is NULL.
- * @retval NRF_ERROR_STORAGE_FULL   If there is no more space in persistent storage.
+ * @retval NRF_ERROR_STORAGE_FULL   If there is not enough space in persistent storage.
  * @retval NRF_ERROR_NO_MEM         If there are no more available peer IDs.
  * @retval NRF_ERROR_BUSY           If the underlying flash filesystem is busy with other flash
  *                                  operations. Try again after receiving a Peer Manager event.
@@ -715,6 +724,7 @@ ret_code_t pm_peers_delete(void);
  *          calling @ref pm_peer_rank_highest or by manipulating the value using a @ref
  *          PM_PEER_DATA_FUNCTIONS function.
  *
+ * @note Peers with no stored rank are not considered.
  * @note Any argument that is NULL is ignored.
  *
  * @param[out] p_highest_ranked_peer  The peer ID with the highest rank of all peers, for example,
@@ -725,7 +735,7 @@ ret_code_t pm_peers_delete(void);
  * @param[out] p_lowest_rank          The lowest rank.
  *
  * @retval NRF_SUCCESS              If the operation completed successfully.
- * @retval NRF_ERROR_NOT_FOUND      If no peers were found.
+ * @retval NRF_ERROR_NOT_FOUND      If no peer with stored peer rank was found.
  * @retval NRF_ERROR_INVALID_STATE  If the Peer Manager is not initialized.
  * @retval NRF_ERROR_INTERNAL       If an internal error occurred.
  * @retval NRF_ERROR_NOT_SUPPORTED  If peer rank functionality has been disabled via the @ref
@@ -754,6 +764,8 @@ ret_code_t pm_peer_ranks_get(pm_peer_id_t * p_highest_ranked_peer,
  * @param[in]  peer_id  The peer to rank highest.
  *
  * @retval NRF_SUCCESS              If the peer's rank is, or will be updated to be highest.
+ * @retval NRF_ERROR_INVALID_PARAM  If @p peer_id is invalid, or doesn't exist in flash.
+ * @retval NRF_ERROR_STORAGE_FULL   If there is not enough space in persistent storage.
  * @retval NRF_ERROR_BUSY           If the underlying flash handler is busy with other flash
  *                                  operations, or if a previous call to this function has not
  *                                  completed. Try again after receiving a Peer Manager event.
